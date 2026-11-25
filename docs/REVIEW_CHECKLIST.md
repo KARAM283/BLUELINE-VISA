@@ -9,8 +9,8 @@ Before production use, complete and record these checks:
 - [ ] Verify one employee cannot read another employee's cases or private documents unless explicitly authorized by role/policy.
 - [ ] Verify manager/admin permissions separately from employee permissions.
 - [ ] Verify case number uniqueness and generation under concurrent inserts.
-- [ ] Verify country, visa type, workflow, and stage consistency constraints.
-- [ ] Verify every stage transition records an immutable history entry.
+- [ ] Verify country and visa type consistency constraints.
+- [ ] Verify employees can move only their permitted cases between active pipelines.
 - [ ] Verify finance edits are restricted to authorized roles.
 - [ ] Verify payment currency and amount validation; prevent unauthorized payment deletion.
 - [ ] Verify activity history cannot be altered by ordinary users.
