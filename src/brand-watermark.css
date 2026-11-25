@@ -1,5 +1,0 @@
-/* Blue Line brand watermark — subtle, fixed in the lower corner */
-.app-shell,.auth-page,.setup-page{position:relative}
-.app-shell::after,.auth-page::after,.setup-page::after{content:"";position:fixed;left:26px;bottom:22px;width:min(28vw,340px);aspect-ratio:700/111;background:url('/blue-line-watermark.png') left bottom/contain no-repeat;pointer-events:none;z-index:0}
-.app-shell>* ,.auth-page>*,.setup-page>*{position:relative;z-index:1}
-@media(max-width:760px){.app-shell::after,.auth-page::after,.setup-page::after{left:12px;bottom:12px;width:min(46vw,220px)}}
