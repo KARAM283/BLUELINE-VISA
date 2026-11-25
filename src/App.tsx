@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowDownLeft, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Filter, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X } from 'lucide-react'
+import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Filter, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
