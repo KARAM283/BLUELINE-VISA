@@ -4,8 +4,6 @@ begin;
 create table if not exists public.visa_pipelines (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  country_id uuid references public.countries(id),
-  visa_type_id uuid references public.visa_types(id),
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -13,12 +11,15 @@ create table if not exists public.visa_pipelines (
 do $$
 begin
   if to_regclass('public.workflow_templates') is not null then
-    insert into public.visa_pipelines (id,name,country_id,visa_type_id,is_active,created_at)
-    select id,name,country_id,visa_type_id,is_active,created_at
+    insert into public.visa_pipelines (id,name,is_active,created_at)
+    select id,name,is_active,created_at
     from public.workflow_templates
     on conflict (id) do nothing;
   end if;
 end $$;
+
+alter table public.visa_pipelines drop column if exists country_id;
+alter table public.visa_pipelines drop column if exists visa_type_id;
 
 alter table public.visa_cases add column if not exists pipeline_id uuid;
 
@@ -118,9 +119,7 @@ declare
   v_old_pipeline_id uuid;
   v_pipeline public.visa_pipelines;
 begin
-  if auth.uid() is null then
-    raise exception 'Authentication required';
-  end if;
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
 
   select * into v_case from public.visa_cases where id = p_case_id for update;
   if not found then raise exception 'Application not found'; end if;
@@ -134,11 +133,6 @@ begin
   select * into v_pipeline from public.visa_pipelines
   where id = p_pipeline_id and is_active = true;
   if not found then raise exception 'Target pipeline is unavailable'; end if;
-
-  if (v_pipeline.country_id is not null and v_pipeline.country_id <> v_case.country_id)
-     or (v_pipeline.visa_type_id is not null and v_pipeline.visa_type_id <> v_case.visa_type_id) then
-    raise exception 'Target pipeline does not match this visa application';
-  end if;
 
   if v_old_pipeline_id = p_pipeline_id then return v_case; end if;
 
