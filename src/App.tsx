@@ -149,7 +149,7 @@ export default function App() {
   </div>
 }
 
-function Brand(){return <div className="brand"><div className="brand-mark">B<span>L</span></div><div><b>BLUE LINE</b><small>TRAVEL & TOURISM</small></div></div>}
+function Brand(){return <div className="brand brand-logo-wrap"><img className="brand-logo" src="/blue-line-watermark.png" alt="Blue Line — Discover the Beyond" /></div>}
 function SetupScreen(){return <main className="setup-page"><div className="setup-card"><Brand/><div className="setup-icon"><Settings2/></div><h1>باقي ربط إعدادات الدخول</h1><p>واجهة النظام جاهزة. أضف بيانات Supabase العامة إلى متغيرات البيئة حتى نفعّل تسجيل الدخول.</p><code>VITE_SUPABASE_URL</code><code>VITE_SUPABASE_ANON_KEY</code><small>استخدم anon / publishable key فقط. لا تضع service role key في الواجهة.</small></div></main>}
 function Metric({icon,label,value,note,tone}:{icon:ReactNode;label:string;value:number;note:string;tone:string}){return <div className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><span>{label}</span><strong>{money(value)}</strong><small>{note}</small></div>}
 function PipelineBoard({pipelines,rows,query,onQueryChange,canManage,onCreate,onMove,onDelete,onOpen}:{pipelines:{id:string;name:string}[];rows:VisaCase[];query:string;onQueryChange:(value:string)=>void;canManage:boolean;onCreate:(name:string)=>Promise<string>;onMove:(caseId:string,pipelineId:string)=>Promise<void>;onDelete:(pipelineId:string)=>Promise<void>;onOpen:(item:VisaCase)=>void}){
