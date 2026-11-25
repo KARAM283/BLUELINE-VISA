@@ -72,9 +72,11 @@ export default function DocumentsWorkspace({ cases, userId }: { cases: VisaCase[
   async function downloadDocument(doc: CaseDocument) {
     if (!supabase) return
     setError('')
+    const newTab = window.open('about:blank', '_blank')
     const { data, error: signedError } = await supabase.storage.from('visa-case-documents').createSignedUrl(doc.storage_path, 60)
-    if (signedError || !data?.signedUrl) { setError(signedError?.message || 'تعذر إنشاء رابط التنزيل.'); return }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    if (signedError || !data?.signedUrl) { newTab?.close(); setError(signedError?.message || 'تعذر إنشاء رابط التنزيل.'); return }
+    if (newTab) newTab.location.href = data.signedUrl
+    else window.location.href = data.signedUrl
   }
 
   if (!cases.length) return <section className="panel"><div className="empty-state"><FileText size={26}/><b>لا توجد معاملات بعد</b><span>أنشئ معاملة أولاً حتى تتمكن من إرفاق وثائقها.</span></div></section>
