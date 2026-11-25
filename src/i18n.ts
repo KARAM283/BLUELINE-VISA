@@ -32,6 +32,7 @@ export function useLanguage() {
     const originalAttrs = new WeakMap<Element, Map<string, { source: string; rendered: string }>>()
     const textWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
     const scan = () => {
+      textWalker.currentNode = document.body
       let node: Node | null
       while ((node = textWalker.nextNode())) {
         const text = node as Text
