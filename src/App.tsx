@@ -209,7 +209,7 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
  async function readPassport(file:File){
   setError('');setOcrNote('');
   if(!acceptedTypes.includes(file.type)){setError('ارفع صورة JPG أو PNG أو WEBP أو ملف PDF فقط.');return}
-  if(file.size>20*1024*1024){setError('الحد الأعلى لحجم الملف 20 MB.');return}
+  if(file.size>4*1024*1024){setError('حتى يقدر Gemini يقرأ الجواز، خلي حجم ملف القراءة أقل من 4 MB. تگدر ترفعه كمرفق عادي لحد 20 MB.');return}
   setFiles(current=>current.some(f=>f.name===file.name&&f.size===file.size)?current:[...current,file]);
   if(!supabase)return;
   setOcrBusy(true);
