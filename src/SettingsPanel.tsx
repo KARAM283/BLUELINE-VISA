@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { supabase } from './lib/supabase'
 
 type Country = { id: string; name: string; iso2: string | null }
@@ -39,7 +40,7 @@ export default function SettingsPanel() {
   }
   useEffect(() => { void load() }, [])
 
-  async function save(action: () => Promise<{ error: { message: string } | null }>) {
+  async function save(action: () => PromiseLike<{ error: { message: string } | null }>) {
     setBusy(true); setError(''); setNotice('')
     const result = await action()
     if (result.error) setError(result.error.message)
@@ -47,12 +48,12 @@ export default function SettingsPanel() {
     setBusy(false)
   }
 
-  const field: React.CSSProperties = { border: '1px solid #e2e7ef', borderRadius: 8, padding: '10px 11px', minWidth: 0, background: '#fbfcfe', color: '#24334a', font: 'inherit', fontSize: 12 }
-  const form: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 9, marginBottom: 16 }
-  const card: React.CSSProperties = { background: '#fff', border: '1px solid #e9edf3', borderRadius: 12, padding: 17, marginBottom: 14 }
-  const button: React.CSSProperties = { border: 0, borderRadius: 8, padding: '10px 14px', background: '#172943', color: '#fff', fontSize: 11, fontWeight: 600 }
-  const heading: React.CSSProperties = { margin: '0 0 12px', fontSize: 14, color: '#1e2b40' }
-  const label: React.CSSProperties = { fontSize: 10, color: '#748095', marginBottom: 5 }
+  const field: CSSProperties = { border: '1px solid #e2e7ef', borderRadius: 8, padding: '10px 11px', minWidth: 0, background: '#fbfcfe', color: '#24334a', font: 'inherit', fontSize: 12 }
+  const form: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 9, marginBottom: 16 }
+  const card: CSSProperties = { background: '#fff', border: '1px solid #e9edf3', borderRadius: 12, padding: 17, marginBottom: 14 }
+  const button: CSSProperties = { border: 0, borderRadius: 8, padding: '10px 14px', background: '#172943', color: '#fff', fontSize: 11, fontWeight: 600 }
+  const heading: CSSProperties = { margin: '0 0 12px', fontSize: 14, color: '#1e2b40' }
+  const label: CSSProperties = { fontSize: 10, color: '#748095', marginBottom: 5 }
 
   return <div>
     {notice && <div style={{ ...card, color: '#21865e', background: '#effaf4', fontSize: 11 }}>{notice}</div>}
