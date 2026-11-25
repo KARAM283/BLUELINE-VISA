@@ -216,7 +216,12 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
   try{
    const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const result=String(reader.result||'');resolve(result.slice(result.indexOf(',')+1))};reader.onerror=()=>reject(new Error('تعذر قراءة الملف'));reader.readAsDataURL(file)});
    const {data,error:invokeError}=await supabase.functions.invoke('passport-ocr',{body:{fileName:file.name,mimeType:file.type,base64}});
-   if(invokeError)throw invokeError;
+   if(invokeError){
+     let detail=invokeError.message||'تعذر الاتصال بخدمة قراءة الجواز.';
+     const context=(invokeError as {context?:unknown}).context;
+     if(context instanceof Response){try{const body=await context.clone().json();if(body?.error)detail=String(body.error)}catch{try{const body=await context.clone().text();if(body)detail=body.slice(0,500)}catch{}}}
+     throw new Error(detail);
+    }
    if(data?.error)throw new Error(data.error);
    const extracted=data?.data;
    if(!extracted)throw new Error('لم يتم استخراج بيانات من الملف.');
