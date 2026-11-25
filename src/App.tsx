@@ -5,8 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
 
-const stages = ['استلام الطلب', 'تدقيق المستندات', 'تقديم للسفارة', 'انتظار القرار', 'مكتملة']
-const stageColors = ['#64748b', '#2563eb', '#8b5cf6', '#d97706', '#059669']
+const stageColors = ['#64748b', '#2563eb', '#8b5cf6', '#d97706', '#059669', '#0d9488', '#be123c']
 const money = (n: number) => new Intl.NumberFormat('en-US').format(n)
 
 export default function App() {
@@ -14,6 +13,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [role, setRole] = useState<AppRole>('employee')
   const [cases, setCases] = useState<VisaCase[]>([])
+  const [workflowStages, setWorkflowStages] = useState<{ id: string; name: string; position: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
@@ -36,17 +36,19 @@ export default function App() {
     let active = true
     const load = async () => {
       setLoading(true); setError('')
-      const [{ data: p, error: pe }, { data: roles, error: re }, { data: rows, error: ce }] = await Promise.all([
+      const [{ data: p, error: pe }, { data: roles, error: re }, { data: rows, error: ce }, { data: stageRows, error: se }] = await Promise.all([
         supabase!.from('profiles').select('id,full_name,is_active').eq('id', session.user.id).maybeSingle(),
         supabase!.from('user_roles').select('role').eq('user_id', session.user.id),
-        supabase!.from('visa_cases').select('*').order('created_at', { ascending: false }).limit(100)
+        supabase!.from('visa_cases').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase!.from('workflow_stages').select('id,name,position').order('position')
       ])
       if (!active) return
-      if (pe || re || ce) setError([pe?.message, re?.message, ce?.message].filter(Boolean).join(' · '))
+      if (pe || re || ce || se) setError([pe?.message, re?.message, ce?.message, se?.message].filter(Boolean).join(' · '))
       setProfile(p as Profile | null)
       const found = (roles ?? []).map(x => x.role as AppRole)
       setRole(found.includes('admin') ? 'admin' : found.includes('manager') ? 'manager' : 'employee')
       setCases((rows ?? []) as VisaCase[])
+      setWorkflowStages((stageRows ?? []) as { id: string; name: string; position: number }[])
       setLoading(false)
     }
     void load()
@@ -78,7 +80,7 @@ export default function App() {
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>
-        {view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{stages.map((s,i)=><div className="stage-row" key={s}><span className="stage-dot" style={{background:stageColors[i]}}/><span>{s}</span><b>{i===0?cases.filter(c=>!c.current_stage_id).length:i===4?cases.filter(c=>c.status==='completed').length:0}</b></div>)}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <section className="panel"><div className="panel-head"><div><h2>سجل المعاملات</h2><p>{filteredCases.length} ملف</p></div><div className="table-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div><button className="icon-btn" title="تصفية"><Filter size={17}/></button></div></div><CaseTable rows={filteredCases}/></section>}
+        {view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <section className="panel"><div className="panel-head"><div><h2>سجل المعاملات</h2><p>{filteredCases.length} ملف</p></div><div className="table-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div><button className="icon-btn" title="تصفية"><Filter size={17}/></button></div></div><CaseTable rows={filteredCases}/></section>}
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
