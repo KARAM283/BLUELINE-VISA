@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X, Columns3, List } from 'lucide-react'
+import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
@@ -27,7 +27,6 @@ export default function App() {
   const [view, setView] = useState<'overview' | 'cases' | 'documents' | 'settings'>('overview')
   const [showNew, setShowNew] = useState(false)
   const [query, setQuery] = useState('')
-  const [caseLayout, setCaseLayout] = useState<'table' | 'kanban'>('table')
   const [mobileNav, setMobileNav] = useState(false)
 
   useEffect(() => {
@@ -112,15 +111,6 @@ export default function App() {
     if (e1) setError(e1.message)
     setAuthBusy(false)
   }
-  async function moveCaseToStage(caseId: string, stageId: string) {
-    if (!supabase) return
-    setError('')
-    const { error: moveError } = await supabase.rpc('transition_case_stage', { p_case_id: caseId, p_to_stage_id: stageId, p_comment: null })
-    if (moveError) { setError(moveError.message); return }
-    const { data, error: refreshError } = await supabase.from('visa_cases').select('*').order('created_at', { ascending: false }).limit(100)
-    if (refreshError) setError(refreshError.message)
-    else setCases((data ?? []) as VisaCase[])
-  }
   async function signOut() { await supabase?.auth.signOut() }
 
   if (!isSupabaseConfigured) return <SetupScreen />
@@ -186,27 +176,6 @@ function PipelineBoard({pipelines,rows,stages,canManage,onCreate,onMove}:{pipeli
 }
 
 function CaseTable({rows}:{rows:VisaCase[]}){if(!rows.length)return <div className="empty-state"><FileText size={25}/><b>ماكو معاملات لحد الآن</b><span>أنشئ أول معاملة حتى تبدأ المتابعة.</span></div>;return <div className="table-wrap"><table><thead><tr><th>رقم المعاملة</th><th>اسم العميل</th><th>الأولوية</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr></thead><tbody>{rows.map(c=><tr key={c.id}><td className="case-id">{c.case_number||'—'}</td><td><b>{c.customer_full_name}</b><small>{c.customer_phone||'بدون رقم'}</small></td><td><span className={`priority priority-${c.priority}`}>{c.priority==='urgent'?'عاجل':c.priority==='high'?'مرتفع':c.priority==='low'?'منخفض':'اعتيادي'}</span></td><td><span className={`status status-${c.status}`}>{c.status==='completed'?'مكتملة':c.status==='on_hold'?'معلقة':c.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span></td><td>{new Intl.DateTimeFormat('en-GB').format(new Date(c.created_at))}</td></tr>)}</tbody></table></div>}
-function CaseKanban({rows,stages,onStageChange}:{rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[];onStageChange:(caseId:string,stageId:string)=>Promise<void>}){
-  if(!stages.length)return <div className="empty-state"><ClipboardList size={25}/><b>ماكو مراحل معرفة</b><span>أضف مسارات ومراحل العمل من إعدادات النظام.</span></div>
-  const ordered=[...stages].sort((a,b)=>a.position-b.position)
-  const knownIds=new Set(ordered.map(stage=>stage.id))
-  const unplaced=rows.filter(row=>!knownIds.has(row.current_stage_id))
-  return <div className="kanban-board">{ordered.map((stage,index)=>{
-    const items=rows.filter(row=>row.current_stage_id===stage.id)
-    return <section className="kanban-column" key={stage.id}>
-      <div className="kanban-column-head"><span className="stage-dot" style={{background:stageColors[index%stageColors.length]}}/><b>{stage.name}</b><span className="kanban-count">{items.length}</span></div>
-      <div className="kanban-cards">{items.length?items.map(item=><CaseCard key={item.id} item={item} stages={ordered.filter(option=>option.workflow_id===item.workflow_id)} onStageChange={onStageChange}/>):<div className="kanban-empty">لا توجد معاملات</div>}</div>
-    </section>
-  })}{unplaced.length>0&&<section className="kanban-column"><div className="kanban-column-head"><span className="stage-dot" style={{background:'#94a3b8'}}/><b>مرحلة غير معروفة</b><span className="kanban-count">{unplaced.length}</span></div><div className="kanban-cards">{unplaced.map(item=><CaseCard key={item.id} item={item} stages={stages.filter(option=>option.workflow_id===item.workflow_id)} onStageChange={onStageChange}/>)}</div></section>}</div>
-}
-function CaseCard({item,stages,onStageChange}:{item:VisaCase;stages:{id:string;name:string;position:number;workflow_id:string}[];onStageChange:(caseId:string,stageId:string)=>Promise<void>}){
-  const [busy,setBusy]=useState(false)
-  const priority=item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'
-  const status=item.status==='completed'?'مكتملة':item.status==='on_hold'?'معلقة':item.status==='cancelled'?'ملغاة':'قيد الإجراء'
-  async function changeStage(nextStage:string){if(!nextStage||nextStage===item.current_stage_id)return;setBusy(true);await onStageChange(item.id,nextStage);setBusy(false)}
-  return <article className="kanban-card"><div className="kanban-card-top"><span className="case-id">{item.case_number||'بدون رقم'}</span><span className={`priority priority-${item.priority}`}>{priority}</span></div><b className="kanban-customer">{item.customer_full_name}</b><span className="kanban-phone">{item.customer_phone||'بدون رقم هاتف'}</span><div className="kanban-card-foot"><span className={`status status-${item.status}`}>{status}</span><small>{item.due_at?new Intl.DateTimeFormat('en-GB').format(new Date(item.due_at)):'—'}</small></div><label className="kanban-move-label">نقل إلى مرحلة<select value={item.current_stage_id} disabled={busy||!stages.length||item.status==='cancelled'} onChange={e=>void changeStage(e.target.value)}><option value={item.current_stage_id}>{stages.find(stage=>stage.id===item.current_stage_id)?.name??'المرحلة الحالية'}</option>{stages.filter(stage=>stage.id!==item.current_stage_id).map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></label></article>
-}
-
 function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=>void;userId:string}){const [name,setName]=useState('');const [phone,setPhone]=useState('');const [country,setCountry]=useState('');const [visa,setVisa]=useState('');const [workflow,setWorkflow]=useState('');const [stage,setStage]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [countries,setCountries]=useState<{id:string;name:string}[]>([]);const [visas,setVisas]=useState<{id:string;name:string;country_id:string}[]>([]);const [workflows,setWorkflows]=useState<{id:string;name:string;country_id:string|null;visa_type_id:string|null}[]>([]);const [stagesList,setStagesList]=useState<{id:string;name:string;workflow_id:string;position:number}[]>([])
 useEffect(()=>{const load=async()=>{const [a,b,c]=await Promise.all([supabase!.from('countries').select('id,name').eq('is_active',true).order('name'),supabase!.from('visa_types').select('id,name,country_id').eq('is_active',true).order('name'),supabase!.from('workflow_templates').select('id,name,country_id,visa_type_id').eq('is_active',true)]);setCountries(a.data??[]);setVisas(b.data??[]);setWorkflows(c.data??[])};void load()},[])
 const filteredVisas=visas.filter(v=>v.country_id===country);const filteredWorkflows=workflows.filter(w=>(!w.country_id||w.country_id===country)&&(!w.visa_type_id||w.visa_type_id===visa))
