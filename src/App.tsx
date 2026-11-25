@@ -73,7 +73,7 @@ export default function App() {
   }, [session])
 
   async function createPipeline(name: string) {
-    if (!supabase) return
+    if (!supabase) throw new Error('Supabase is not configured')
     setError('')
     const { data, error: createError } = await supabase.rpc('create_visa_pipeline', { p_name: name })
     if (createError) { setError(createError.message); throw createError }
@@ -154,7 +154,7 @@ function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCr
     finally{setMoving(null)}
   }
   return <section className="panel pipelines-panel">
-    <div className="panel-head pipelines-heading"><div><span className="eyebrow">VISA / PIPELINES</span><h2>PIPELINES</h2><p>{rows.length} طلب · {pipelines.length} Pipeline</p></div>
+    <div className="panel-head pipelines-heading"><div><span className="eyebrow">VISA / PIPELINES</span><h2>PIPELINES</h2><p>{rows.length} ملف · {pipelines.length} Pipeline</p></div>
       <div className="pipeline-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>onQueryChange(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div>
       {canManage&&<form className="pipeline-create" onSubmit={create}><input aria-label="اسم Pipeline" placeholder="اسم Pipeline جديد" value={newName} onChange={e=>setNewName(e.target.value)} required/><button className="primary-btn compact" disabled={creating||!newName.trim()}><Plus size={16}/>{creating?'جارٍ الإنشاء...':'إضافة Pipeline'}</button></form>}
       </div>
@@ -165,7 +165,7 @@ function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCr
         const items=rows.filter(item=>item.workflow_id===pipeline.id)
         const pipelineStages=stages.filter(stage=>stage.workflow_id===pipeline.id).sort((a,b)=>a.position-b.position)
         return <section className="pipeline-column" key={pipeline.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)void move(id,pipeline.id)}}>
-          <div className="pipeline-column-head"><span className="pipeline-color" style={{background:stageColors[index%stageColors.length]}}/><div><b>{pipeline.name}</b><small>{pipelineStages.length} stages</small></div><span className="pipeline-count">{items.length}</span></div>
+          <div className="pipeline-column-head"><span className="pipeline-color" style={{background:stageColors[index%stageColors.length]}}/><div><b>{pipeline.name}</b><small>{pipelineStages.length} مرحلة</small></div><span className="pipeline-count">{items.length}</span></div>
           <div className="pipeline-cards">{items.length?items.map(item=><article className="pipeline-case-card" key={item.id} draggable={moving!==item.id} onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',item.id)}} onDragEnd={()=>{}}>
             <div className="pipeline-case-top"><span className="case-id">{item.case_number||'—'}</span><span className={`priority priority-${item.priority}`}>{item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'}</span></div>
             <b>{item.customer_full_name}</b><small>{item.customer_phone||'بدون رقم هاتف'}</small>
