@@ -80,3 +80,9 @@
 .pipeline-drop-empty{padding:25px 7px;border:1px dashed #d9e1eb;border-radius:8px;text-align:center;color:#a1acba;font-size:10px}
 .app-shell[dir="ltr"] .pipeline-case-card>small{text-align:left}
 @media(max-width:760px){.pipeline-board{grid-auto-columns:minmax(245px,84vw)}.pipelines-heading{align-items:stretch}.pipeline-create{width:100%}.pipeline-create input{flex:1;min-width:0}.pipeline-create button{white-space:nowrap}}
+
+
+.pipeline-tools{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap;min-width:min(100%,340px)}
+.pipeline-tools .search-box{min-width:190px;flex:1}
+.pipeline-tools .search-box input{font-size:10px}
+@media(max-width:760px){.pipeline-tools{width:100%;min-width:0}.pipeline-tools .search-box{min-width:0}}
