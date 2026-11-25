@@ -144,7 +144,7 @@ export default function App() {
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
-    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} onClose={()=>setSelectedCase(null)} onUpdated={async()=>{const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}}/>}
+    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} canDelete={role==='manager'||role==='admin'} onClose={()=>setSelectedCase(null)} onDeleted={async()=>{setSelectedCase(null);const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} onUpdated={async()=>{const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}}/>}
     {showNew && <NewCaseModal onClose={()=>setShowNew(false)} onCreated={async()=>{setShowNew(false);const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} userId={session.user.id}/>}
   </div>
 }
@@ -294,8 +294,8 @@ function FilePreview({file,large=false}:{file:File;large?:boolean}){
 }
 
 type CaseAttachment={id:string;storage_path:string;original_filename:string;mime_type:string|null;uploaded_at:string}
-function CaseDetailsModal({item,userId,onClose,onUpdated}:{item:VisaCase;userId:string;onClose:()=>void;onUpdated:()=>void}){
- const [attachments,setAttachments]=useState<CaseAttachment[]>([]);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('')
+function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{item:VisaCase;userId:string;canDelete:boolean;onClose:()=>void;onDeleted:()=>void;onUpdated:()=>void}){
+ const [attachments,setAttachments]=useState<CaseAttachment[]>([]);const [busy,setBusy]=useState(false);const [deleting,setDeleting]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('')
  async function load(){if(!supabase)return;const result=await supabase.from('case_documents').select('id,storage_path,original_filename,mime_type,uploaded_at').eq('case_id',item.id).is('document_type_id',null).order('uploaded_at',{ascending:false});if(result.error)setError(result.error.message);setAttachments((result.data??[]) as CaseAttachment[])}
  useEffect(()=>{void load()},[item.id])
  async function addFiles(files:FileList|null){if(!supabase||!files?.length)return;setBusy(true);setError('');setNotice('')
@@ -309,11 +309,12 @@ function CaseDetailsModal({item,userId,onClose,onUpdated}:{item:VisaCase;userId:
   }
   await load();onUpdated();setBusy(false);if(!error)setNotice('تم تحديث مرفقات المعاملة.')
  }
+ async function deleteCase(){if(!supabase||!canDelete||deleting||busy)return;if(!window.confirm(`تأكيد حذف معاملة "${item.customer_full_name}"؟ سيتم حذف بياناتها ومرفقاتها نهائياً.`))return;setDeleting(true);setError('');setNotice('');try{const docs=await supabase.from('case_documents').select('storage_path').eq('case_id',item.id);if(docs.error)throw docs.error;const paths=(docs.data??[]).map(doc=>doc.storage_path);if(paths.length){const removed=await supabase.storage.from('visa-case-documents').remove(paths);if(removed.error)throw removed.error}const result=await supabase.from('visa_cases').delete().eq('id',item.id).select('id').maybeSingle();if(result.error)throw result.error;if(!result.data)throw new Error('لم يتم حذف المعاملة. تحقق من الصلاحيات.');onDeleted()}catch(err){setError(err instanceof Error?err.message:'تعذر حذف المعاملة')}finally{setDeleting(false)}}
  async function openAttachment(file:CaseAttachment){if(!supabase)return;const tab=window.open('about:blank','_blank');const result=await supabase.storage.from('visa-case-documents').createSignedUrl(file.storage_path,120);if(result.error||!result.data?.signedUrl){tab?.close();setError(result.error?.message||'تعذر فتح الملف');return}if(tab)tab.location.href=result.data.signedUrl;else window.location.href=result.data.signedUrl}
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal-card case-details-modal"><div className="modal-head"><div><span className="eyebrow">VISA / CASE FILE</span><h2>{item.customer_full_name}</h2><p>{item.case_number||'رقم المعاملة غير متوفر'}</p></div><button type="button" className="icon-btn" onClick={onClose}><X/></button></div>
  <div className="case-details-grid"><div><small>NAME</small><b>{item.customer_full_name}</b></div><div><small>PHONE</small><b>{item.customer_phone||'—'}</b></div><div><small>DATE OF BIRTH</small><b>{item.date_of_birth||'—'}</b></div><div><small>EXPIRE DATE</small><b>{item.expire_date||'—'}</b></div></div>
  <div className="case-attachments-section"><div className="case-attachments-head"><div><b>ATTACHMENTS</b><small>{attachments.length} ملف مرفق</small></div><label className="secondary-btn case-add-attachment"><Plus size={15}/> إضافة مرفقات<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={e=>{void addFiles(e.target.files);e.currentTarget.value=''}}/></label></div>
  {attachments.length?<div className="case-attachment-list">{attachments.map(file=><button type="button" className="case-attachment-item" key={file.id} onClick={()=>void openAttachment(file)}><FileText size={18}/><span><b>{file.original_filename}</b><small>{file.mime_type?.includes('pdf')?'PDF':'Image'} · {new Intl.DateTimeFormat('en-GB').format(new Date(file.uploaded_at))}</small></span><ArrowLeft size={15}/></button>)}</div>:<div className="empty-state case-attachments-empty">لا توجد مرفقات لهذه المعاملة بعد.</div>}</div>
  {error&&<div className="error-line">{error}</div>}{notice&&<div className="success-line">{notice}</div>}{busy&&<div className="loading-card">جارٍ رفع المرفقات...</div>}
- <div className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose}>إغلاق</button></div></section></div>
+ <div className="modal-actions">{canDelete&&<button type="button" className="case-delete-btn" onClick={()=>void deleteCase()} disabled={busy||deleting}>{deleting?'جارٍ الحذف...':'حذف المعاملة'}<Trash2 size={16}/></button>}<button type="button" className="secondary-btn" onClick={onClose} disabled={deleting}>إغلاق</button></div></section></div>
 }
