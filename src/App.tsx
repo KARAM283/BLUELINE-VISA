@@ -114,7 +114,7 @@ function CaseKanban({rows,stages,onStageChange}:{rows:VisaCase[];stages:{id:stri
       <div className="kanban-column-head"><span className="stage-dot" style={{background:stageColors[index%stageColors.length]}}/><b>{stage.name}</b><span className="kanban-count">{items.length}</span></div>
       <div className="kanban-cards">{items.length?items.map(item=><CaseCard key={item.id} item={item} stages={ordered.filter(option=>option.workflow_id===item.workflow_id)} onStageChange={onStageChange}/>):<div className="kanban-empty">لا توجد معاملات</div>}</div>
     </section>
-  })}{unplaced.length>0&&<section className="kanban-column"><div className="kanban-column-head"><span className="stage-dot" style={{background:'#94a3b8'}}/><b>مرحلة غير معروفة</b><span className="kanban-count">{unplaced.length}</span></div><div className="kanban-cards">{unplaced.map(item=><CaseCard key={item.id} item={item}/>)}</div></section>}</div>
+  })}{unplaced.length>0&&<section className="kanban-column"><div className="kanban-column-head"><span className="stage-dot" style={{background:'#94a3b8'}}/><b>مرحلة غير معروفة</b><span className="kanban-count">{unplaced.length}</span></div><div className="kanban-cards">{unplaced.map(item=><CaseCard key={item.id} item={item} stages={stages.filter(option=>option.workflow_id===item.workflow_id)} onStageChange={onStageChange}/>)}</div></section>}</div>
 }
 function CaseCard({item,stages,onStageChange}:{item:VisaCase;stages:{id:string;name:string;position:number;workflow_id:string}[];onStageChange:(caseId:string,stageId:string)=>Promise<void>}){
   const [busy,setBusy]=useState(false)
