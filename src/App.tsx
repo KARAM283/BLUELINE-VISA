@@ -154,11 +154,11 @@ function PipelineBoard({pipelines,rows,stages,canManage,onCreate,onMove}:{pipeli
     finally{setMoving(null)}
   }
   return <section className="panel pipelines-panel">
-    <div className="panel-head pipelines-heading"><div><span className="eyebrow">VISA / PIPELINES</span><h2>PIPELINES</h2><p>{rows.length} Applications · {pipelines.length} Pipelines</p></div>
-      {canManage&&<form className="pipeline-create" onSubmit={create}><input aria-label="Pipeline name" placeholder="New pipeline name" value={newName} onChange={e=>setNewName(e.target.value)} required/><button className="primary-btn compact" disabled={creating||!newName.trim()}><Plus size={16}/>{creating?'Creating...':'Add Pipeline'}</button></form>}
+    <div className="panel-head pipelines-heading"><div><span className="eyebrow">VISA / PIPELINES</span><h2>PIPELINES</h2><p>{rows.length} طلب · {pipelines.length} Pipeline</p></div>
+      {canManage&&<form className="pipeline-create" onSubmit={create}><input aria-label="اسم Pipeline" placeholder="اسم Pipeline جديد" value={newName} onChange={e=>setNewName(e.target.value)} required/><button className="primary-btn compact" disabled={creating||!newName.trim()}><Plus size={16}/>{creating?'جارٍ الإنشاء...':'إضافة Pipeline'}</button></form>}
     </div>
     {localError&&<div className="error-banner">{localError}</div>}
-    {!pipelines.length?<div className="empty-state"><BriefcaseBusiness size={25}/><b>No pipelines yet</b><span>{canManage?'Create the first pipeline to start organizing visa applications.':'Pipelines have not been created yet.'}</span></div>:
+    {!pipelines.length?<div className="empty-state"><BriefcaseBusiness size={25}/><b>ماكو Pipelines بعد</b><span>{canManage?'أنشئ أول Pipeline حتى تبدأ بتنظيم طلبات الفيزا.':'ما تم إنشاء Pipelines لحد الآن.'}</span></div>:
       <div className="pipeline-board">{pipelines.map((pipeline,index)=>{
         const items=rows.filter(item=>item.workflow_id===pipeline.id)
         const pipelineStages=stages.filter(stage=>stage.workflow_id===pipeline.id).sort((a,b)=>a.position-b.position)
@@ -168,8 +168,8 @@ function PipelineBoard({pipelines,rows,stages,canManage,onCreate,onMove}:{pipeli
             <div className="pipeline-case-top"><span className="case-id">{item.case_number||'—'}</span><span className={`priority priority-${item.priority}`}>{item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'}</span></div>
             <b>{item.customer_full_name}</b><small>{item.customer_phone||'بدون رقم هاتف'}</small>
             <div className="pipeline-case-meta"><span className={`status status-${item.status}`}>{item.status==='completed'?'مكتملة':item.status==='on_hold'?'معلقة':item.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span><span>{pipelineStages.find(stage=>stage.id===item.current_stage_id)?.name||'—'}</span></div>
-            <label className="pipeline-move-select">Move to pipeline<select value={pipeline.id} disabled={moving===item.id} onChange={e=>void move(item.id,e.target.value)}><option value={pipeline.id}>{pipeline.name}</option>{pipelines.filter(target=>target.id!==pipeline.id&&(!target.country_id||target.country_id===item.country_id)&&(!target.visa_type_id||target.visa_type_id===item.visa_type_id)&&stages.some(stage=>stage.workflow_id===target.id)).map(target=><option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
-          </article>):<div className="pipeline-drop-empty">Drag an application here</div>}</div>
+            <label className="pipeline-move-select">نقل إلى Pipeline<select value={pipeline.id} disabled={moving===item.id} onChange={e=>void move(item.id,e.target.value)}><option value={pipeline.id}>{pipeline.name}</option>{pipelines.filter(target=>target.id!==pipeline.id&&(!target.country_id||target.country_id===item.country_id)&&(!target.visa_type_id||target.visa_type_id===item.visa_type_id)&&stages.some(stage=>stage.workflow_id===target.id)).map(target=><option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
+          </article>):<div className="pipeline-drop-empty">اسحب الطلب إلى هنا</div>}</div>
         </section>
       })}</div>}
   </section>
