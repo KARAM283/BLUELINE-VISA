@@ -201,7 +201,7 @@ function PipelineBoard({pipelines,rows,query,onQueryChange,canManage,onCreate,on
 
 function CaseTable({rows}:{rows:VisaCase[]}){if(!rows.length)return <div className="empty-state"><FileText size={25}/><b>ماكو معاملات لحد الآن</b><span>أنشئ أول معاملة حتى تبدأ المتابعة.</span></div>;return <div className="table-wrap"><table><thead><tr><th>رقم المعاملة</th><th>اسم العميل</th><th>الأولوية</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr></thead><tbody>{rows.map(c=><tr key={c.id}><td className="case-id">{c.case_number||'—'}</td><td><b>{c.customer_full_name}</b><small>{c.customer_phone||'بدون رقم'}</small></td><td><span className={`priority priority-${c.priority}`}>{c.priority==='urgent'?'عاجل':c.priority==='high'?'مرتفع':c.priority==='low'?'منخفض':'اعتيادي'}</span></td><td><span className={`status status-${c.status}`}>{c.status==='completed'?'مكتملة':c.status==='on_hold'?'معلقة':c.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span></td><td>{new Intl.DateTimeFormat('en-GB').format(new Date(c.created_at))}</td></tr>)}</tbody></table></div>}
 function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=>void;userId:string}){
- const [firstName,setFirstName]=useState('');const [lastName,setLastName]=useState('');const [passportNumber,setPassportNumber]=useState('');const [nationality,setNationality]=useState('');const [passportIssueDate,setPassportIssueDate]=useState('');const [phone,setPhone]=useState('');const [dateOfBirth,setDateOfBirth]=useState('');const [expireDate,setExpireDate]=useState('');const [country,setCountry]=useState('');const [visa,setVisa]=useState('');const [pipeline,setPipeline]=useState('');const [files,setFiles]=useState<File[]>([]);const [busy,setBusy]=useState(false);const [ocrBusy,setOcrBusy]=useState(false);const [dragging,setDragging]=useState(false);const [ocrNote,setOcrNote]=useState('');const [error,setError]=useState('');
+ const [firstName,setFirstName]=useState('');const [lastName,setLastName]=useState('');const [passportNumber,setPassportNumber]=useState('');const [nationality,setNationality]=useState('');const [passportIssueDate,setPassportIssueDate]=useState('');const [phone,setPhone]=useState('');const [dateOfBirth,setDateOfBirth]=useState('');const [expireDate,setExpireDate]=useState('');const [country,setCountry]=useState('');const [visa,setVisa]=useState('');const [pipeline,setPipeline]=useState('');const [passportFile,setPassportFile]=useState<File|null>(null);const [files,setFiles]=useState<File[]>([]);const [busy,setBusy]=useState(false);const [ocrBusy,setOcrBusy]=useState(false);const [dragging,setDragging]=useState(false);const [ocrNote,setOcrNote]=useState('');const [error,setError]=useState('');
  const [countries,setCountries]=useState<{id:string;name:string}[]>([]);const [visas,setVisas]=useState<{id:string;name:string;country_id:string}[]>([]);const [pipelines,setPipelines]=useState<{id:string;name:string}[]>([])
  useEffect(()=>{const load=async()=>{const [a,b,c]=await Promise.all([supabase!.from('countries').select('id,name').eq('is_active',true).order('name'),supabase!.from('visa_types').select('id,name,country_id').eq('is_active',true).order('name'),supabase!.from('visa_pipelines').select('id,name').eq('is_active',true).order('created_at')]);setCountries(a.data??[]);setVisas(b.data??[]);setPipelines(c.data??[]) };void load()},[])
  const filteredVisas=visas.filter(v=>v.country_id===country)
@@ -210,7 +210,7 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
   setError('');setOcrNote('');
   if(!acceptedTypes.includes(file.type)){setError('ارفع صورة JPG أو PNG أو WEBP أو ملف PDF فقط.');return}
   if(file.size>4*1024*1024){setError('حتى يقدر Gemini يقرأ الجواز، خلي حجم ملف القراءة أقل من 4 MB. تگدر ترفعه كمرفق عادي لحد 20 MB.');return}
-  setFiles(current=>current.some(f=>f.name===file.name&&f.size===file.size)?current:[...current,file]);
+  setPassportFile(file);
   if(!supabase)return;
   setOcrBusy(true);
   try{
@@ -242,7 +242,7 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
   if(!fullName){setError('أدخل الاسم الأول واسم العائلة.');setBusy(false);return}
   const result=await supabase.from('visa_cases').insert({created_by:userId,customer_full_name:fullName,customer_first_name:firstName.trim()||null,customer_last_name:lastName.trim()||null,customer_phone:phone.trim()||null,passport_number:passportNumber.trim()||null,nationality:nationality.trim()||null,passport_issue_date:passportIssueDate||null,date_of_birth:dateOfBirth||null,expire_date:expireDate||null,country_id:country,visa_type_id:visa,pipeline_id:pipeline}).select('id').single()
   if(result.error||!result.data){setError(result.error?.message||'تعذر إنشاء المعاملة');setBusy(false);return}
-  for(const file of files){
+  for(const file of [...(passportFile?[passportFile]:[]),...files]){
    if(file.size>20*1024*1024){setError('الملف '+file.name+' يتجاوز 20 MB.');setBusy(false);onCreated();return}
    if(!acceptedTypes.includes(file.type)){setError('نوع الملف '+file.name+' غير مدعوم. ارفع PDF أو صورة.');setBusy(false);onCreated();return}
    const safeName=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^\.+/,'').slice(-100)||'attachment'
@@ -254,17 +254,41 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
   }
   setBusy(false);onCreated()
  }
- return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy&&!ocrBusy)onClose()}}><form className="modal-card case-create-modal" onSubmit={submit}><div className="modal-head"><div><span className="eyebrow">NEW APPLICATION</span><h2>إنشاء معاملة جديدة</h2><p>ارفع صورة الجواز أو PDF وسيقرأ Gemini البيانات تلقائياً.</p></div><button type="button" className="icon-btn" onClick={onClose} disabled={busy||ocrBusy}><X/></button></div>
- <div className={dragging?'passport-dropzone is-dragging':'passport-dropzone'} onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={e=>{e.preventDefault();setDragging(false)}} onDrop={e=>{e.preventDefault();setDragging(false);const file=e.dataTransfer.files?.[0];if(file)void readPassport(file)}}><div className="passport-drop-icon"><FileText size={23}/></div><b>اسحب صورة الجواز أو ملف PDF هنا</b><span>Gemini AI سيقرأ الاسم والجنسية ورقم الجواز والتواريخ</span><label className="passport-browse">اختيار ملف<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" disabled={ocrBusy||busy} onChange={e=>{const file=e.target.files?.[0];if(file)void readPassport(file);e.currentTarget.value=''}}/></label>{ocrBusy&&<small className="passport-reading">جاري تحليل الجواز بواسطة Gemini...</small>}{ocrNote&&<small className="passport-success">{ocrNote}</small>}</div>
- <div className="form-row"><label>FIRST NAME<input value={firstName} onChange={e=>setFirstName(e.target.value)} required placeholder="Given name(s)"/></label><label>LAST NAME<input value={lastName} onChange={e=>setLastName(e.target.value)} required placeholder="Surname"/></label></div>
- <div className="form-row"><label>PASSPORT NUMBER<input value={passportNumber} onChange={e=>setPassportNumber(e.target.value)} placeholder="Passport number"/></label><label>NATIONALITY<input value={nationality} onChange={e=>setNationality(e.target.value)} placeholder="Nationality"/></label></div>
- <label>PHONE<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+964..."/></label>
- <div className="form-row"><label>DATE OF BIRTH<input type="date" value={dateOfBirth} onChange={e=>setDateOfBirth(e.target.value)}/></label><label>ISSUE DATE<input type="date" value={passportIssueDate} onChange={e=>setPassportIssueDate(e.target.value)}/></label></div>
- <label>EXPIRE DATE<input type="date" value={expireDate} onChange={e=>setExpireDate(e.target.value)}/></label>
- <div className="form-row"><label>الدولة<select value={country} onChange={e=>{setCountry(e.target.value);setVisa('');setPipeline('')}} required><option value="">اختر الدولة</option>{countries.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>نوع الفيزا<select value={visa} onChange={e=>{setVisa(e.target.value);setPipeline('')}} required disabled={!country}><option value="">اختر النوع</option>{filteredVisas.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label></div>
- <label>Pipeline<select value={pipeline} onChange={e=>setPipeline(e.target.value)} required disabled={!visa}><option value="">اختر Pipeline</option>{pipelines.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
- <label className="case-attachment-picker">ATTACHMENTS <span>صور أو ملفات PDF · الحد الأعلى 20 MB لكل ملف</span><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple onChange={e=>setFiles(current=>[...current,...Array.from(e.target.files??[])])}/>{files.length>0&&<small>{files.map(f=>f.name).join(' · ')}</small>}</label>
- {error&&<div className="error-line">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={busy||ocrBusy}>إلغاء</button><button className="primary-btn" disabled={busy||ocrBusy||!pipeline}>{busy?'جارٍ الحفظ والرفع...':ocrBusy?'جاري قراءة الجواز...':'حفظ المعاملة'}<Plus size={17}/></button></div></form></div>
+ return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy&&!ocrBusy)onClose()}}><form className="modal-card case-create-modal" onSubmit={submit}>
+ <div className="modal-head"><div><span className="eyebrow">NEW APPLICATION</span><h2>إنشاء معاملة جديدة</h2><p>ارفع صورة الجواز أو PDF وسيقرأ Gemini البيانات تلقائياً. راجع الصورة والبيانات قبل الحفظ.</p></div><button type="button" className="icon-btn" onClick={onClose} disabled={busy||ocrBusy}><X/></button></div>
+ <div className="case-create-layout">
+  <aside className="case-preview-column">
+   <div className="case-preview-heading"><div><b>PASSPORT PREVIEW</b><small>{passportFile?passportFile.name:'معاينة الجواز'}</small></div><span>{passportFile?'READY':'NO FILE'}</span></div>
+   <div className={dragging?'passport-dropzone is-dragging':'passport-dropzone'} onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={e=>{e.preventDefault();setDragging(false)}} onDrop={e=>{e.preventDefault();setDragging(false);const file=e.dataTransfer.files?.[0];if(file)void readPassport(file)}}>
+    {passportFile?<FilePreview file={passportFile} large/>:<><div className="passport-drop-icon"><FileText size={23}/></div><b>اسحب صورة الجواز أو ملف PDF هنا</b><span>ستظهر المعاينة هنا بحجم كبير حتى تتأكد من البيانات بعينك</span></>}
+    <label className="passport-browse">{passportFile?'تغيير ملف الجواز':'اختيار صورة الجواز'}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" disabled={ocrBusy||busy} onChange={e=>{const file=e.target.files?.[0];if(file)void readPassport(file);e.currentTarget.value=''}}/></label>
+    {ocrBusy&&<small className="passport-reading">جاري تحليل الجواز بواسطة Gemini...</small>}{ocrNote&&<small className="passport-success">{ocrNote}</small>}
+   </div>
+   <div className="case-preview-attachments"><div className="case-preview-heading"><div><b>ATTACHMENTS PREVIEW</b><small>{files.length} ملف مرفق</small></div></div>
+    {files.length?<div className="case-preview-file-list">{files.map((file,index)=><div className="case-preview-file" key={file.name+'-'+file.size+'-'+index}><FilePreview file={file}/><span><b>{file.name}</b><small>{file.type.includes('pdf')?'PDF':'Image'} · {(file.size/1024/1024).toFixed(2)} MB</small></span><button type="button" aria-label="إزالة المرفق" disabled={busy} onClick={()=>setFiles(current=>current.filter((_,i)=>i!==index))}><X size={15}/></button></div>)}</div>:<div className="case-preview-empty">أي صورة أو PDF تضيفه كمرفق راح تظهر معاينته هنا.</div>}
+   </div>
+  </aside>
+  <section className="case-create-fields">
+   <div className="form-row"><label>FIRST NAME<input value={firstName} onChange={e=>setFirstName(e.target.value)} required placeholder="Given name(s)"/></label><label>LAST NAME<input value={lastName} onChange={e=>setLastName(e.target.value)} required placeholder="Surname"/></label></div>
+   <div className="form-row"><label>PASSPORT NUMBER<input value={passportNumber} onChange={e=>setPassportNumber(e.target.value)} placeholder="Passport number"/></label><label>NATIONALITY<input value={nationality} onChange={e=>setNationality(e.target.value)} placeholder="Nationality"/></label></div>
+   <label>PHONE<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+964..."/></label>
+   <div className="form-row"><label>DATE OF BIRTH<input type="date" value={dateOfBirth} onChange={e=>setDateOfBirth(e.target.value)}/></label><label>ISSUE DATE<input type="date" value={passportIssueDate} onChange={e=>setPassportIssueDate(e.target.value)}/></label></div>
+   <label>EXPIRE DATE<input type="date" value={expireDate} onChange={e=>setExpireDate(e.target.value)}/></label>
+   <div className="form-row"><label>الدولة<select value={country} onChange={e=>{setCountry(e.target.value);setVisa('');setPipeline('')}} required><option value="">اختر الدولة</option>{countries.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>نوع الفيزا<select value={visa} onChange={e=>{setVisa(e.target.value);setPipeline('')}} required disabled={!country}><option value="">اختر النوع</option>{filteredVisas.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label></div>
+   <label>Pipeline<select value={pipeline} onChange={e=>setPipeline(e.target.value)} required disabled={!visa}><option value="">اختر Pipeline</option>{pipelines.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+   <label className="case-attachment-picker">ATTACHMENTS <span>صور أو ملفات PDF · الحد الأعلى 20 MB لكل ملف</span><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={e=>{setFiles(current=>[...current,...Array.from(e.target.files??[])]);e.currentTarget.value=''}}/></label>
+  </section>
+ </div>
+ {error&&<div className="error-line">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose} disabled={busy||ocrBusy}>إلغاء</button><button className="primary-btn" disabled={busy||ocrBusy||!pipeline}>{busy?'جارٍ الحفظ والرفع...':ocrBusy?'جاري قراءة الجواز...':'حفظ المعاملة'}<Plus size={17}/></button></div>
+ </form></div>
+}
+
+function FilePreview({file,large=false}:{file:File;large?:boolean}){
+ const [url,setUrl]=useState('');
+ useEffect(()=>{const next=URL.createObjectURL(file);setUrl(next);return()=>URL.revokeObjectURL(next)},[file]);
+ if(!url)return <div className={large?'file-preview-large file-preview-loading':'file-preview-thumb'}/>;
+ if(file.type==='application/pdf')return large?<iframe className="file-preview-large file-preview-pdf" src={url} title={file.name}/>:<div className="file-preview-thumb file-preview-pdf-thumb"><FileText size={25}/><small>PDF</small></div>;
+ return <img className={large?'file-preview-large':'file-preview-thumb'} src={url} alt={file.name}/>;
 }
 
 type CaseAttachment={id:string;storage_path:string;original_filename:string;mime_type:string|null;uploaded_at:string}
