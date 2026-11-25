@@ -47,3 +47,36 @@
 .auth-page[dir="ltr"] .auth-card{direction:ltr}
 .auth-page[dir="ltr"] .auth-form label{text-align:left}
 @media(max-width:760px){.app-shell[dir="ltr"] .sidebar{transform:translateX(-100%)}.app-shell[dir="ltr"] .sidebar.sidebar-open{transform:translateX(0)}.app-shell[dir="ltr"] .main-area{margin-left:0}}
+
+
+/* VISA pipeline board */
+.pipelines-panel{overflow:hidden}
+.pipelines-heading{align-items:flex-end;gap:16px;flex-wrap:wrap}
+.pipelines-heading h2{margin:5px 0;font-size:18px;letter-spacing:.08em;color:#1c2d46}
+.pipeline-create{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pipeline-create input{min-width:190px;border:1px solid #e2e7ef;border-radius:8px;padding:10px 12px;background:#fbfcfe;color:#24334a;font:inherit;font-size:11px;outline:0}
+.pipeline-create input:focus{border-color:#b8c6d8}
+.pipeline-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,1fr);gap:13px;overflow-x:auto;padding:4px 2px 14px;align-items:start;min-height:230px}
+.pipeline-column{min-width:0;min-height:220px;background:#f7f9fc;border:1px solid #e9edf3;border-radius:12px;padding:11px;transition:border-color .15s,background .15s}
+.pipeline-column:has(.pipeline-case-card[draggable="true"]):hover{border-color:#cbd7e5}
+.pipeline-column-head{display:flex;align-items:center;gap:10px;padding:3px 2px 12px;border-bottom:1px solid #e7ecf2}
+.pipeline-color{width:9px;height:32px;border-radius:9px;flex:none}
+.pipeline-column-head>div{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.pipeline-column-head b{font-size:12px;color:#26364d;overflow-wrap:anywhere}
+.pipeline-column-head small{font-size:9px;color:#9aa5b4}
+.pipeline-count{min-width:25px;padding:4px 7px;border-radius:20px;text-align:center;background:#e9eef5;color:#53647b;font-size:10px}
+.pipeline-cards{display:flex;flex-direction:column;gap:9px;padding-top:10px}
+.pipeline-case-card{padding:12px;background:#fff;border:1px solid #e5eaf1;border-radius:10px;box-shadow:0 2px 6px #1b2b4308;cursor:grab;transition:box-shadow .15s,transform .15s}
+.pipeline-case-card:active{cursor:grabbing}
+.pipeline-case-card:hover{box-shadow:0 5px 15px #1b2b4312;transform:translateY(-1px)}
+.pipeline-case-top,.pipeline-case-meta{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.pipeline-case-card>b{display:block;margin-top:11px;color:#26364d;font-size:11px}
+.pipeline-case-card>small{display:block;margin-top:4px;color:#98a3b2;font-size:9px;direction:ltr;text-align:right}
+.pipeline-case-meta{padding-top:10px;margin-top:10px;border-top:1px solid #f0f2f6}
+.pipeline-case-meta>span:last-child{color:#8592a4;font-size:9px}
+.pipeline-move-select{display:flex;flex-direction:column;gap:5px;margin-top:10px;color:#8995a5;font-size:9px}
+.pipeline-move-select select{width:100%;border:1px solid #e8edf3;border-radius:7px;background:#fbfcfe;padding:7px 8px;color:#526176;font:inherit;font-size:9px;outline:0}
+.pipeline-move-select select:disabled{opacity:.55}
+.pipeline-drop-empty{padding:25px 7px;border:1px dashed #d9e1eb;border-radius:8px;text-align:center;color:#a1acba;font-size:10px}
+.app-shell[dir="ltr"] .pipeline-case-card>small{text-align:left}
+@media(max-width:760px){.pipeline-board{grid-auto-columns:minmax(245px,84vw)}.pipelines-heading{align-items:stretch}.pipeline-create{width:100%}.pipeline-create input{flex:1;min-width:0}.pipeline-create button{white-space:nowrap}}
