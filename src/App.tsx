@@ -18,6 +18,7 @@ export default function App() {
   const [role, setRole] = useState<AppRole>('employee')
   const [cases, setCases] = useState<VisaCase[]>([])
   const [workflowStages, setWorkflowStages] = useState<{ id: string; name: string; position: number; workflow_id: string }[]>([])
+  const [pipelines, setPipelines] = useState<{ id: string; name: string; country_id: string | null; visa_type_id: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
@@ -60,6 +61,45 @@ export default function App() {
     return () => { active = false }
   }, [session])
 
+  useEffect(() => {
+    if (!supabase || !session?.user) { setPipelines([]); return }
+    let active = true
+    supabase.from('workflow_templates').select('id,name,country_id,visa_type_id').eq('is_active', true).order('created_at')
+      .then(({ data, error: pipelineError }) => {
+        if (!active) return
+        if (pipelineError) setError(pipelineError.message)
+        else setPipelines(data ?? [])
+      })
+    return () => { active = false }
+  }, [session])
+
+  async function createPipeline(name: string) {
+    if (!supabase) return
+    setError('')
+    const { data, error: createError } = await supabase.rpc('create_visa_pipeline', { p_name: name })
+    if (createError) { setError(createError.message); throw createError }
+    const [{ data: pipelineRows, error: pipelineError }, { data: stageRows, error: stageError }] = await Promise.all([
+      supabase.from('workflow_templates').select('id,name,country_id,visa_type_id').eq('is_active', true).order('created_at'),
+      supabase.from('workflow_stages').select('id,name,position,workflow_id').order('position')
+    ])
+    if (pipelineError || stageError) {
+      const issue = pipelineError || stageError
+      setError(issue!.message)
+      throw issue
+    }
+    setPipelines(pipelineRows ?? [])
+    setWorkflowStages(stageRows ?? [])
+    return data as string
+  }
+
+  async function moveCaseToPipeline(caseId: string, pipelineId: string) {
+    if (!supabase) return
+    setError('')
+    const { data, error: moveError } = await supabase.rpc('move_case_to_pipeline', { p_case_id: caseId, p_pipeline_id: pipelineId })
+    if (moveError) { setError(moveError.message); throw moveError }
+    if (data) setCases(current => current.map(item => item.id === caseId ? data as VisaCase : item))
+  }
+
   const filteredCases = useMemo(() => cases.filter(c => [c.case_number, c.customer_full_name, c.customer_phone].some(v => v?.toLowerCase().includes(query.toLowerCase()))), [cases, query])
   const openCases = cases.filter(c => c.status === 'open' || c.status === 'on_hold')
   const overdue = openCases.filter(c => c.due_at && new Date(c.due_at) < new Date()).length
@@ -94,7 +134,7 @@ export default function App() {
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         {(view==='overview'||view==='cases') && <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>}
-        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <section className="panel"><div className="panel-head"><div><h2>سجل المعاملات</h2><p>{filteredCases.length} ملف</p></div><div className="table-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div><div className="view-switch" role="group" aria-label="طريقة عرض المعاملات"><button className={caseLayout==='table'?'selected':''} onClick={()=>setCaseLayout('table')} title="عرض جدولي"><List size={16}/><span>جدول</span></button><button className={caseLayout==='kanban'?'selected':''} onClick={()=>setCaseLayout('kanban')} title="عرض كانبان"><Columns3 size={16}/><span>مراحل</span></button></div></div></div>{caseLayout==='table' ? <CaseTable rows={filteredCases}/> : <CaseKanban rows={filteredCases} stages={workflowStages} onStageChange={moveCaseToStage}/>}</section>}
+        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <PipelineBoard pipelines={pipelines} rows={filteredCases} stages={workflowStages} canManage={role==='manager'||role==='admin'} onCreate={createPipeline} onMove={moveCaseToPipeline}/>}
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
@@ -105,6 +145,46 @@ export default function App() {
 function Brand(){return <div className="brand"><div className="brand-mark">B<span>L</span></div><div><b>BLUE LINE</b><small>TRAVEL & TOURISM</small></div></div>}
 function SetupScreen(){return <main className="setup-page"><div className="setup-card"><Brand/><div className="setup-icon"><Settings2/></div><h1>باقي ربط إعدادات الدخول</h1><p>واجهة النظام جاهزة. أضف بيانات Supabase العامة إلى متغيرات البيئة حتى نفعّل تسجيل الدخول.</p><code>VITE_SUPABASE_URL</code><code>VITE_SUPABASE_ANON_KEY</code><small>استخدم anon / publishable key فقط. لا تضع service role key في الواجهة.</small></div></main>}
 function Metric({icon,label,value,note,tone}:{icon:ReactNode;label:string;value:number;note:string;tone:string}){return <div className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><span>{label}</span><strong>{money(value)}</strong><small>{note}</small></div>}
+function PipelineBoard({pipelines,rows,stages,canManage,onCreate,onMove}:{pipelines:{id:string;name:string;country_id:string|null;visa_type_id:string|null}[];rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[];canManage:boolean;onCreate:(name:string)=>Promise<string>;onMove:(caseId:string,pipelineId:string)=>Promise<void>}){
+  const [newName,setNewName]=useState('')
+  const [creating,setCreating]=useState(false)
+  const [moving,setMoving]=useState<string|null>(null)
+  const [localError,setLocalError]=useState('')
+  async function create(e:FormEvent){
+    e.preventDefault()
+    if(!newName.trim()||creating)return
+    setCreating(true);setLocalError('')
+    try{await onCreate(newName.trim());setNewName('')}catch(err){setLocalError(err instanceof Error?err.message:'تعذر إنشاء Pipeline')}
+    finally{setCreating(false)}
+  }
+  async function move(caseId:string,pipelineId:string){
+    if(!pipelineId)return
+    setMoving(caseId);setLocalError('')
+    try{await onMove(caseId,pipelineId)}catch(err){setLocalError(err instanceof Error?err.message:'تعذر نقل الطلب')}
+    finally{setMoving(null)}
+  }
+  return <section className="panel pipelines-panel">
+    <div className="panel-head pipelines-heading"><div><span className="eyebrow">VISA / PIPELINES</span><h2>PIPELINES</h2><p>{rows.length} Applications · {pipelines.length} Pipelines</p></div>
+      {canManage&&<form className="pipeline-create" onSubmit={create}><input aria-label="Pipeline name" placeholder="New pipeline name" value={newName} onChange={e=>setNewName(e.target.value)} required/><button className="primary-btn compact" disabled={creating||!newName.trim()}><Plus size={16}/>{creating?'Creating...':'Add Pipeline'}</button></form>}
+    </div>
+    {localError&&<div className="error-banner">{localError}</div>}
+    {!pipelines.length?<div className="empty-state"><BriefcaseBusiness size={25}/><b>No pipelines yet</b><span>{canManage?'Create the first pipeline to start organizing visa applications.':'Pipelines have not been created yet.'}</span></div>:
+      <div className="pipeline-board">{pipelines.map((pipeline,index)=>{
+        const items=rows.filter(item=>item.workflow_id===pipeline.id)
+        const pipelineStages=stages.filter(stage=>stage.workflow_id===pipeline.id).sort((a,b)=>a.position-b.position)
+        return <section className="pipeline-column" key={pipeline.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)void move(id,pipeline.id)}}>
+          <div className="pipeline-column-head"><span className="pipeline-color" style={{background:stageColors[index%stageColors.length]}}/><div><b>{pipeline.name}</b><small>{pipelineStages.length} stages</small></div><span className="pipeline-count">{items.length}</span></div>
+          <div className="pipeline-cards">{items.length?items.map(item=><article className="pipeline-case-card" key={item.id} draggable={moving!==item.id} onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',item.id)}} onDragEnd={()=>{}}>
+            <div className="pipeline-case-top"><span className="case-id">{item.case_number||'—'}</span><span className={`priority priority-${item.priority}`}>{item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'}</span></div>
+            <b>{item.customer_full_name}</b><small>{item.customer_phone||'بدون رقم هاتف'}</small>
+            <div className="pipeline-case-meta"><span className={`status status-${item.status}`}>{item.status==='completed'?'مكتملة':item.status==='on_hold'?'معلقة':item.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span><span>{pipelineStages.find(stage=>stage.id===item.current_stage_id)?.name||'—'}</span></div>
+            <label className="pipeline-move-select">Move to pipeline<select value={pipeline.id} disabled={moving===item.id} onChange={e=>void move(item.id,e.target.value)}><option value={pipeline.id}>{pipeline.name}</option>{pipelines.filter(target=>target.id!==pipeline.id&&(!target.country_id||target.country_id===item.country_id)&&(!target.visa_type_id||target.visa_type_id===item.visa_type_id)&&stages.some(stage=>stage.workflow_id===target.id)).map(target=><option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
+          </article>):<div className="pipeline-drop-empty">Drag an application here</div>}</div>
+        </section>
+      })}</div>}
+  </section>
+}
+
 function CaseTable({rows}:{rows:VisaCase[]}){if(!rows.length)return <div className="empty-state"><FileText size={25}/><b>ماكو معاملات لحد الآن</b><span>أنشئ أول معاملة حتى تبدأ المتابعة.</span></div>;return <div className="table-wrap"><table><thead><tr><th>رقم المعاملة</th><th>اسم العميل</th><th>الأولوية</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr></thead><tbody>{rows.map(c=><tr key={c.id}><td className="case-id">{c.case_number||'—'}</td><td><b>{c.customer_full_name}</b><small>{c.customer_phone||'بدون رقم'}</small></td><td><span className={`priority priority-${c.priority}`}>{c.priority==='urgent'?'عاجل':c.priority==='high'?'مرتفع':c.priority==='low'?'منخفض':'اعتيادي'}</span></td><td><span className={`status status-${c.status}`}>{c.status==='completed'?'مكتملة':c.status==='on_hold'?'معلقة':c.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span></td><td>{new Intl.DateTimeFormat('en-GB').format(new Date(c.created_at))}</td></tr>)}</tbody></table></div>}
 function CaseKanban({rows,stages,onStageChange}:{rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[];onStageChange:(caseId:string,stageId:string)=>Promise<void>}){
   if(!stages.length)return <div className="empty-state"><ClipboardList size={25}/><b>ماكو مراحل معرفة</b><span>أضف مسارات ومراحل العمل من إعدادات النظام.</span></div>
