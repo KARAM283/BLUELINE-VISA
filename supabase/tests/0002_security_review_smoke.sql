@@ -22,15 +22,17 @@ begin
     raise exception 'authenticated unexpectedly has direct counter access';
   end if;
 
-  if has_table_privilege('authenticated','public.case_stage_history','INSERT') then
-    raise exception 'authenticated can forge case stage history rows';
+  if to_regclass('public.workflow_templates') is not null
+     or to_regclass('public.workflow_stages') is not null
+     or to_regclass('public.case_stage_history') is not null then
+    raise exception 'Legacy workflow and stage objects should not exist';
   end if;
 
-  if has_function_privilege('anon','public.transition_case_stage(uuid,uuid,text)','EXECUTE') then
-    raise exception 'anon can execute transition_case_stage';
+  if has_function_privilege('anon','public.move_case_to_pipeline(uuid,uuid)','EXECUTE') then
+    raise exception 'anon can execute move_case_to_pipeline';
   end if;
 
-  if not has_function_privilege('authenticated','public.transition_case_stage(uuid,uuid,text)','EXECUTE') then
-    raise exception 'authenticated cannot execute transition_case_stage';
+  if not has_function_privilege('authenticated','public.move_case_to_pipeline(uuid,uuid)','EXECUTE') then
+    raise exception 'authenticated cannot execute move_case_to_pipeline';
   end if;
 end $$;
