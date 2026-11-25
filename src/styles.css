@@ -20,3 +20,5 @@
 .kanban-card-foot small{color:#98a3b2;font-size:9px}
 .kanban-empty{padding:25px 8px;text-align:center;color:#a2adbb;font-size:10px;border:1px dashed #dfe5ed;border-radius:8px}
 @media(max-width:760px){.table-tools{flex-wrap:wrap;justify-content:flex-end}.kanban-board{grid-auto-columns:minmax(230px,82vw)}}
+
+.kanban-move-label{display:flex;flex-direction:column;gap:5px;margin-top:10px;color:#8290a3;font-size:9px}.kanban-move-label select{width:100%;border:1px solid #e8edf3;border-radius:7px;background:#fbfcfe;padding:7px 8px;color:#526176;font:inherit;font-size:9px;outline:0}.kanban-move-label select:disabled{opacity:.55;cursor:not-allowed}
