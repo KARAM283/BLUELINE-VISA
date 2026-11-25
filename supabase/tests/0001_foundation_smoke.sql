@@ -4,8 +4,8 @@ declare missing text[];
 begin
   select array_agg(t) into missing
   from unnest(array[
-    'profiles','user_roles','countries','visa_types','workflow_templates','workflow_stages',
-    'visa_cases','case_stage_history','document_types','document_requirements','case_documents',
+    'profiles','user_roles','countries','visa_types','visa_pipelines',
+    'visa_cases','document_types','document_requirements','case_documents',
     'case_notes','tasks','appointments','case_finances','payments','notifications','activity_logs',
     'message_templates','message_queue'
   ]) as t
@@ -15,10 +15,16 @@ begin
   if not exists(select 1 from pg_class where oid='public.visa_cases'::regclass and relrowsecurity) then
     raise exception 'RLS is not enabled on visa_cases';
   end if;
+  if not exists(select 1 from pg_class where oid='public.visa_pipelines'::regclass and relrowsecurity) then
+    raise exception 'RLS is not enabled on visa_pipelines';
+  end if;
   if not exists(select 1 from storage.buckets where id='visa-case-documents' and public=false) then
     raise exception 'Private visa-case-documents bucket is missing';
   end if;
-  if to_regprocedure('public.transition_case_stage(uuid,uuid,text)') is null then
-    raise exception 'transition_case_stage RPC is missing';
+  if to_regprocedure('public.move_case_to_pipeline(uuid,uuid)') is null then
+    raise exception 'move_case_to_pipeline RPC is missing';
+  end if;
+  if to_regclass('public.workflow_templates') is not null or to_regclass('public.workflow_stages') is not null then
+    raise exception 'Legacy workflow tables should not exist';
   end if;
 end $$;
