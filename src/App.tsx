@@ -95,8 +95,22 @@ export default function App() {
   async function moveCaseToPipeline(caseId: string, pipelineId: string) {
     if (!supabase) return
     setError('')
+    const previousCase = cases.find(item => item.id === caseId)
+    if (!previousCase || previousCase.pipeline_id === pipelineId) return
+
+    // Optimistic update: move the card immediately while Supabase persists it.
+    setCases(current => current.map(item => item.id === caseId ? { ...item, pipeline_id: pipelineId } : item))
+
     const { data, error: moveError } = await supabase.rpc('move_case_to_pipeline', { p_case_id: caseId, p_pipeline_id: pipelineId })
-    if (moveError) { setError(moveError.message); throw moveError }
+    if (moveError) {
+      setCases(current => current.map(item =>
+        item.id === caseId && item.pipeline_id === pipelineId
+          ? { ...item, pipeline_id: previousCase.pipeline_id }
+          : item
+      ))
+      setError(moveError.message)
+      throw moveError
+    }
     if (data) setCases(current => current.map(item => item.id === caseId ? data as VisaCase : item))
   }
 
