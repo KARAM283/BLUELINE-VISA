@@ -53,7 +53,6 @@ export default function SettingsPanel() {
   const card: CSSProperties = { background: '#fff', border: '1px solid #e9edf3', borderRadius: 12, padding: 17, marginBottom: 14 }
   const button: CSSProperties = { border: 0, borderRadius: 8, padding: '10px 14px', background: '#172943', color: '#fff', fontSize: 11, fontWeight: 600 }
   const heading: CSSProperties = { margin: '0 0 12px', fontSize: 14, color: '#1e2b40' }
-  const label: CSSProperties = { fontSize: 10, color: '#748095', marginBottom: 5 }
 
   return <div>
     {notice && <div style={{ ...card, color: '#21865e', background: '#effaf4', fontSize: 11 }}>{notice}</div>}
