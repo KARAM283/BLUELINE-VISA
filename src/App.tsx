@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X } from 'lucide-react'
+import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Trash2, Users, WalletCards, X } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
@@ -91,6 +91,18 @@ export default function App() {
     return data as string
   }
 
+  async function deletePipeline(pipelineId: string) {
+    if (!supabase) throw new Error('Supabase is not configured')
+    const pipeline = pipelines.find(item => item.id === pipelineId)
+    if (!pipeline) return
+    const { count, error: countError } = await supabase.from('visa_cases').select('id', { count: 'exact', head: true }).eq('workflow_id', pipelineId)
+    if (countError) throw countError
+    if ((count ?? 0) > 0) throw new Error('لا يمكن حذف Pipeline تحتوي على معاملات. انقل المعاملات أولاً.')
+    const { error: deleteError } = await supabase.from('workflow_templates').update({ is_active: false }).eq('id', pipelineId).eq('is_active', true)
+    if (deleteError) throw deleteError
+    setPipelines(current => current.filter(item => item.id !== pipelineId))
+  }
+
   async function moveCaseToPipeline(caseId: string, pipelineId: string) {
     if (!supabase) return
     setError('')
@@ -124,7 +136,7 @@ export default function App() {
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         {(view==='overview'||view==='cases') && <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>}
-        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <PipelineBoard pipelines={pipelines} rows={filteredCases} stages={workflowStages} query={query} onQueryChange={setQuery} canManage={role==='manager'||role==='admin'} onCreate={createPipeline} onMove={moveCaseToPipeline}/>}
+        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <PipelineBoard pipelines={pipelines} rows={filteredCases} stages={workflowStages} query={query} onQueryChange={setQuery} canManage={role==='manager'||role==='admin'} onCreate={createPipeline} onMove={moveCaseToPipeline} onDelete={deletePipeline}/>}
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
@@ -135,7 +147,7 @@ export default function App() {
 function Brand(){return <div className="brand"><div className="brand-mark">B<span>L</span></div><div><b>BLUE LINE</b><small>TRAVEL & TOURISM</small></div></div>}
 function SetupScreen(){return <main className="setup-page"><div className="setup-card"><Brand/><div className="setup-icon"><Settings2/></div><h1>باقي ربط إعدادات الدخول</h1><p>واجهة النظام جاهزة. أضف بيانات Supabase العامة إلى متغيرات البيئة حتى نفعّل تسجيل الدخول.</p><code>VITE_SUPABASE_URL</code><code>VITE_SUPABASE_ANON_KEY</code><small>استخدم anon / publishable key فقط. لا تضع service role key في الواجهة.</small></div></main>}
 function Metric({icon,label,value,note,tone}:{icon:ReactNode;label:string;value:number;note:string;tone:string}){return <div className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><span>{label}</span><strong>{money(value)}</strong><small>{note}</small></div>}
-function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCreate,onMove}:{pipelines:{id:string;name:string;country_id:string|null;visa_type_id:string|null}[];rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[];query:string;onQueryChange:(value:string)=>void;canManage:boolean;onCreate:(name:string)=>Promise<string>;onMove:(caseId:string,pipelineId:string)=>Promise<void>}){
+function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCreate,onMove,onDelete}:{pipelines:{id:string;name:string;country_id:string|null;visa_type_id:string|null}[];rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[];query:string;onQueryChange:(value:string)=>void;canManage:boolean;onCreate:(name:string)=>Promise<string>;onMove:(caseId:string,pipelineId:string)=>Promise<void>;onDelete:(pipelineId:string)=>Promise<void>}){
   const [newName,setNewName]=useState('')
   const [creating,setCreating]=useState(false)
   const [moving,setMoving]=useState<string|null>(null)
@@ -146,6 +158,12 @@ function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCr
     setCreating(true);setLocalError('')
     try{await onCreate(newName.trim());setNewName('')}catch(err){setLocalError(err instanceof Error?err.message:'تعذر إنشاء Pipeline')}
     finally{setCreating(false)}
+  }
+  async function removePipeline(pipelineId:string,pipelineName:string){
+    if(!canManage)return
+    if(!window.confirm(`تأكيد تعطيل Pipeline "${pipelineName}"؟ لا يمكن تعطيلها إذا تحتوي على معاملات.`))return
+    setLocalError('')
+    try{await onDelete(pipelineId)}catch(err){setLocalError(err instanceof Error?err.message:'تعذر حذف Pipeline')}
   }
   async function move(caseId:string,pipelineId:string){
     if(!pipelineId)return
@@ -165,7 +183,7 @@ function PipelineBoard({pipelines,rows,stages,query,onQueryChange,canManage,onCr
         const items=rows.filter(item=>item.workflow_id===pipeline.id)
         const pipelineStages=stages.filter(stage=>stage.workflow_id===pipeline.id).sort((a,b)=>a.position-b.position)
         return <section className="pipeline-column" key={pipeline.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(id)void move(id,pipeline.id)}}>
-          <div className="pipeline-column-head"><span className="pipeline-color" style={{background:stageColors[index%stageColors.length]}}/><div><b>{pipeline.name}</b><small>{pipelineStages.length} مرحلة</small></div><span className="pipeline-count">{items.length}</span></div>
+          <div className="pipeline-column-head"><span className="pipeline-color" style={{background:stageColors[index%stageColors.length]}}/><div><b>{pipeline.name}</b><small>{pipelineStages.length} مرحلة</small></div><span className="pipeline-count">{items.length}</span>{canManage&&<button type="button" className="pipeline-delete-btn" title="حذف Pipeline" aria-label={`حذف ${pipeline.name}`} onClick={()=>void removePipeline(pipeline.id,pipeline.name)}><Trash2 size={15}/></button>}</div>
           <div className="pipeline-cards">{items.length?items.map(item=><article className="pipeline-case-card" key={item.id} draggable={moving!==item.id} onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',item.id)}} onDragEnd={()=>{}}>
             <div className="pipeline-case-top"><span className="case-id">{item.case_number||'—'}</span><span className={`priority priority-${item.priority}`}>{item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'}</span></div>
             <b>{item.customer_full_name}</b><small>{item.customer_phone||'بدون رقم هاتف'}</small>
