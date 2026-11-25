@@ -25,3 +25,25 @@
 
 /* Case document workspace */
 .documents-panel{max-width:1100px}.documents-heading{align-items:flex-start}.document-case-select{display:flex;flex-direction:column;gap:7px;max-width:560px;margin:18px 0;color:#526176;font-size:11px}.document-case-select select{width:100%;border:1px solid #e2e7ef;background:#fbfcfe;border-radius:8px;padding:11px 12px;color:#24334a;font-size:12px}.document-case-summary{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding:13px 15px;background:#f7f9fc;border:1px solid #edf0f5;border-radius:9px;margin:14px 0 18px;font-size:10px;color:#8190a4}.document-case-summary b{color:#26364d;font-size:12px}.document-case-summary span:last-child{margin-right:auto}.requirements-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.requirement-card{border:1px solid #e9edf3;border-radius:11px;padding:14px;min-width:0}.requirement-info{display:flex;align-items:center;gap:10px}.requirement-icon{width:34px;height:34px;display:grid;place-items:center;background:#f0f4fa;color:#60758f;border-radius:9px;flex:none}.requirement-info>div:nth-child(2){min-width:0;flex:1}.requirement-info b,.requirement-info small{display:block}.requirement-info b{font-size:11px;color:#27364b}.requirement-info small{font-size:9px;color:#96a1b0;margin-top:4px;line-height:1.7}.document-state{font-size:9px;padding:5px 8px;border-radius:20px;white-space:nowrap}.document-state.uploaded{background:#e9f7f0;color:#26976a}.document-state.missing{background:#fff5e8;color:#bd7c2c}.uploaded-document{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #f0f2f6;margin-top:11px}.uploaded-document>div{min-width:0}.uploaded-document b,.uploaded-document small{display:flex;align-items:center;gap:5px;overflow-wrap:anywhere}.uploaded-document b{font-size:10px;color:#40516a}.uploaded-document small{font-size:9px;color:#9aa5b4;margin-top:4px}.document-download{width:30px;height:30px;display:grid;place-items:center;border:1px solid #e8edf3;border-radius:8px;background:#fff;color:#64748b;flex:none}.upload-control{position:relative;display:inline-flex;align-items:center;gap:7px;margin:12px 0 0!important;padding:8px 11px;border:1px dashed #d9e0e9;border-radius:8px;color:#64748b!important;font-size:10px!important;cursor:pointer}.upload-control input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.upload-control:has(input:disabled){opacity:.55;cursor:wait}.document-message{display:flex;align-items:center;gap:7px;margin:12px 0}.success-line{font-size:11px;color:#25865f;background:#eaf7f0;padding:10px;border-radius:8px}.documents-empty{min-height:180px}.document-footnote{margin-top:18px;color:#9aa5b4;font-size:9px;line-height:1.8}@media(max-width:760px){.requirements-list{grid-template-columns:1fr}.documents-heading{gap:10px}.document-case-summary{gap:8px}.document-case-summary span:last-child{margin-right:0}}
+
+.language-toggle{border:1px solid #e3e8ef;background:#fff;color:#526176;border-radius:9px;padding:8px 12px;font-size:11px;font-weight:600;white-space:nowrap}
+.language-toggle:hover{border-color:#c6a36b;color:#9a743d}
+.auth-language{display:flex;justify-content:flex-end;margin-bottom:12px}
+.app-shell[dir="ltr"] .sidebar{inset:0 auto 0 0}
+.app-shell[dir="ltr"] .main-area{margin-right:0;margin-left:258px}
+.app-shell[dir="ltr"] .nav-item{text-align:left}
+.app-shell[dir="ltr"] .nav-count{margin-right:0;margin-left:auto}
+.app-shell[dir="ltr"] .profile-chip{direction:ltr}
+.app-shell[dir="ltr"] .breadcrumb span{margin:0 8px}
+.app-shell[dir="ltr"] .page-heading,.app-shell[dir="ltr"] .panel-head{direction:ltr}
+.app-shell[dir="ltr"] table{text-align:left}
+.app-shell[dir="ltr"] .case-id,.app-shell[dir="ltr"] .kanban-phone{direction:ltr;text-align:left}
+.app-shell[dir="ltr"] .stage-row{direction:ltr}
+.app-shell[dir="ltr"] .stage-row b{margin-left:auto;margin-right:0}
+.app-shell[dir="ltr"] .document-case-summary span:last-child{margin-left:auto;margin-right:0}
+.app-shell[dir="ltr"] .page-footer{direction:ltr}
+.app-shell[dir="ltr"] .modal-actions{direction:ltr}
+.app-shell[dir="ltr"] .search-box input{text-align:left}
+.auth-page[dir="ltr"] .auth-card{direction:ltr}
+.auth-page[dir="ltr"] .auth-form label{text-align:left}
+@media(max-width:760px){.app-shell[dir="ltr"] .sidebar{transform:translateX(-100%)}.app-shell[dir="ltr"] .sidebar.sidebar-open{transform:translateX(0)}.app-shell[dir="ltr"] .main-area{margin-left:0}}
