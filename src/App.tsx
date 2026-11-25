@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Filter, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X } from 'lucide-react'
+import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, FileText, Filter, Globe2, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Users, WalletCards, X, Columns3, List } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
@@ -14,7 +14,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [role, setRole] = useState<AppRole>('employee')
   const [cases, setCases] = useState<VisaCase[]>([])
-  const [workflowStages, setWorkflowStages] = useState<{ id: string; name: string; position: number }[]>([])
+  const [workflowStages, setWorkflowStages] = useState<{ id: string; name: string; position: number; workflow_id: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
@@ -23,6 +23,7 @@ export default function App() {
   const [view, setView] = useState<'overview' | 'cases' | 'settings'>('overview')
   const [showNew, setShowNew] = useState(false)
   const [query, setQuery] = useState('')
+  const [caseLayout, setCaseLayout] = useState<'table' | 'kanban'>('table')
   const [mobileNav, setMobileNav] = useState(false)
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function App() {
         supabase!.from('profiles').select('id,full_name,is_active').eq('id', session.user.id).maybeSingle(),
         supabase!.from('user_roles').select('role').eq('user_id', session.user.id),
         supabase!.from('visa_cases').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase!.from('workflow_stages').select('id,name,position').order('position')
+        supabase!.from('workflow_stages').select('id,name,position,workflow_id').order('position')
       ])
       if (!active) return
       if (pe || re || ce || se) setError([pe?.message, re?.message, ce?.message, se?.message].filter(Boolean).join(' · '))
@@ -49,7 +50,7 @@ export default function App() {
       const found = (roles ?? []).map(x => x.role as AppRole)
       setRole(found.includes('admin') ? 'admin' : found.includes('manager') ? 'manager' : 'employee')
       setCases((rows ?? []) as VisaCase[])
-      setWorkflowStages((stageRows ?? []) as { id: string; name: string; position: number }[])
+      setWorkflowStages((stageRows ?? []) as { id: string; name: string; position: number; workflow_id: string }[])
       setLoading(false)
     }
     void load()
@@ -81,7 +82,7 @@ export default function App() {
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         {view!=='settings' && <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>}
-        {view==='settings' ? <SettingsPanel/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <section className="panel"><div className="panel-head"><div><h2>سجل المعاملات</h2><p>{filteredCases.length} ملف</p></div><div className="table-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div><button className="icon-btn" title="تصفية"><Filter size={17}/></button></div></div><CaseTable rows={filteredCases}/></section>}
+        {view==='settings' ? <SettingsPanel/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>مراحل سير العمل</h2><p>توزيع الملفات حسب المرحلة</p></div><ClipboardList size={19}/></div>{workflowStages.length ? workflowStages.map((s,i)=><div className="stage-row" key={s.id}><span className="stage-dot" style={{background:stageColors[i % stageColors.length]}}/><span>{s.name}</span><b>{cases.filter(c=>c.current_stage_id===s.id).length}</b></div>) : <div className="stage-note"><Globe2 size={16}/> أضف مسارات ومراحل العمل من إعدادات النظام حتى تظهر هنا.</div>}<div className="stage-note"><Globe2 size={16}/> يمكن تخصيص المراحل حسب نوع التأشيرة.</div></div></section> : <section className="panel"><div className="panel-head"><div><h2>سجل المعاملات</h2><p>{filteredCases.length} ملف</p></div><div className="table-tools"><div className="search-box"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالاسم أو رقم المعاملة..."/></div><div className="view-switch" role="group" aria-label="طريقة عرض المعاملات"><button className={caseLayout==='table'?'selected':''} onClick={()=>setCaseLayout('table')} title="عرض جدولي"><List size={16}/><span>جدول</span></button><button className={caseLayout==='kanban'?'selected':''} onClick={()=>setCaseLayout('kanban')} title="عرض كانبان"><Columns3 size={16}/><span>مراحل</span></button></div></div></div>{caseLayout==='table' ? <CaseTable rows={filteredCases}/> : <CaseKanban rows={filteredCases} stages={workflowStages}/>}</section>}
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
@@ -93,6 +94,25 @@ function Brand(){return <div className="brand"><div className="brand-mark">B<spa
 function SetupScreen(){return <main className="setup-page"><div className="setup-card"><Brand/><div className="setup-icon"><Settings2/></div><h1>باقي ربط إعدادات الدخول</h1><p>واجهة النظام جاهزة. أضف بيانات Supabase العامة إلى متغيرات البيئة حتى نفعّل تسجيل الدخول.</p><code>VITE_SUPABASE_URL</code><code>VITE_SUPABASE_ANON_KEY</code><small>استخدم anon / publishable key فقط. لا تضع service role key في الواجهة.</small></div></main>}
 function Metric({icon,label,value,note,tone}:{icon:ReactNode;label:string;value:number;note:string;tone:string}){return <div className="metric-card"><div className={`metric-icon ${tone}`}>{icon}</div><span>{label}</span><strong>{money(value)}</strong><small>{note}</small></div>}
 function CaseTable({rows}:{rows:VisaCase[]}){if(!rows.length)return <div className="empty-state"><FileText size={25}/><b>ماكو معاملات لحد الآن</b><span>أنشئ أول معاملة حتى تبدأ المتابعة.</span></div>;return <div className="table-wrap"><table><thead><tr><th>رقم المعاملة</th><th>اسم العميل</th><th>الأولوية</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr></thead><tbody>{rows.map(c=><tr key={c.id}><td className="case-id">{c.case_number||'—'}</td><td><b>{c.customer_full_name}</b><small>{c.customer_phone||'بدون رقم'}</small></td><td><span className={`priority priority-${c.priority}`}>{c.priority==='urgent'?'عاجل':c.priority==='high'?'مرتفع':c.priority==='low'?'منخفض':'اعتيادي'}</span></td><td><span className={`status status-${c.status}`}>{c.status==='completed'?'مكتملة':c.status==='on_hold'?'معلقة':c.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span></td><td>{new Intl.DateTimeFormat('en-GB').format(new Date(c.created_at))}</td></tr>)}</tbody></table></div>}
+function CaseKanban({rows,stages}:{rows:VisaCase[];stages:{id:string;name:string;position:number;workflow_id:string}[]}){
+  if(!stages.length)return <div className="empty-state"><ClipboardList size={25}/><b>ماكو مراحل معرفة</b><span>أضف مسارات ومراحل العمل من إعدادات النظام.</span></div>
+  const ordered=[...stages].sort((a,b)=>a.position-b.position)
+  const knownIds=new Set(ordered.map(stage=>stage.id))
+  const unplaced=rows.filter(row=>!knownIds.has(row.current_stage_id))
+  return <div className="kanban-board">{ordered.map((stage,index)=>{
+    const items=rows.filter(row=>row.current_stage_id===stage.id)
+    return <section className="kanban-column" key={stage.id}>
+      <div className="kanban-column-head"><span className="stage-dot" style={{background:stageColors[index%stageColors.length]}}/><b>{stage.name}</b><span className="kanban-count">{items.length}</span></div>
+      <div className="kanban-cards">{items.length?items.map(item=><CaseCard key={item.id} item={item}/>):<div className="kanban-empty">لا توجد معاملات</div>}</div>
+    </section>
+  })}{unplaced.length>0&&<section className="kanban-column"><div className="kanban-column-head"><span className="stage-dot" style={{background:'#94a3b8'}}/><b>مرحلة غير معروفة</b><span className="kanban-count">{unplaced.length}</span></div><div className="kanban-cards">{unplaced.map(item=><CaseCard key={item.id} item={item}/>)}</div></section>}</div>
+}
+function CaseCard({item}:{item:VisaCase}){
+  const priority=item.priority==='urgent'?'عاجل':item.priority==='high'?'مرتفع':item.priority==='low'?'منخفض':'اعتيادي'
+  const status=item.status==='completed'?'مكتملة':item.status==='on_hold'?'معلقة':item.status==='cancelled'?'ملغاة':'قيد الإجراء'
+  return <article className="kanban-card"><div className="kanban-card-top"><span className="case-id">{item.case_number||'بدون رقم'}</span><span className={`priority priority-${item.priority}`}>{priority}</span></div><b className="kanban-customer">{item.customer_full_name}</b><span className="kanban-phone">{item.customer_phone||'بدون رقم هاتف'}</span><div className="kanban-card-foot"><span className={`status status-${item.status}`}>{status}</span><small>{item.due_at?new Intl.DateTimeFormat('en-GB').format(new Date(item.due_at)):'—'}</small></div></article>
+}
+
 function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=>void;userId:string}){const [name,setName]=useState('');const [phone,setPhone]=useState('');const [country,setCountry]=useState('');const [visa,setVisa]=useState('');const [workflow,setWorkflow]=useState('');const [stage,setStage]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [countries,setCountries]=useState<{id:string;name:string}[]>([]);const [visas,setVisas]=useState<{id:string;name:string;country_id:string}[]>([]);const [workflows,setWorkflows]=useState<{id:string;name:string;country_id:string|null;visa_type_id:string|null}[]>([]);const [stagesList,setStagesList]=useState<{id:string;name:string;workflow_id:string;position:number}[]>([])
 useEffect(()=>{const load=async()=>{const [a,b,c]=await Promise.all([supabase!.from('countries').select('id,name').eq('is_active',true).order('name'),supabase!.from('visa_types').select('id,name,country_id').eq('is_active',true).order('name'),supabase!.from('workflow_templates').select('id,name,country_id,visa_type_id').eq('is_active',true)]);setCountries(a.data??[]);setVisas(b.data??[]);setWorkflows(c.data??[])};void load()},[])
 const filteredVisas=visas.filter(v=>v.country_id===country);const filteredWorkflows=workflows.filter(w=>(!w.country_id||w.country_id===country)&&(!w.visa_type_id||w.visa_type_id===visa))
