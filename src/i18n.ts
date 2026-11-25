@@ -203,14 +203,14 @@ const translations: Record<string, string> = Object.fromEntries([
   ['صلاحيات حسب الدور', 'Role-based access'],
 ['اسم Pipeline', 'Pipeline name'],
   ['اسم Pipeline جديد', 'New pipeline name'],
-  ['طلب', 'Applications'],
   ['جارٍ الإنشاء...', 'Creating...'],
   ['إضافة Pipeline', 'Add Pipeline'],
   ['ماكو Pipelines بعد', 'No pipelines yet'],
   ['أنشئ أول Pipeline حتى تبدأ بتنظيم طلبات الفيزا.', 'Create the first pipeline to start organizing visa applications.'],
   ['ما تم إنشاء Pipelines لحد الآن.', 'Pipelines have not been created yet.'],
   ['نقل إلى Pipeline', 'Move to pipeline'],
-  ['اسحب الطلب إلى هنا', 'Drag an application here']
+  ['اسحب الطلب إلى هنا', 'Drag an application here'],
+  ['مرحلة', 'Stages']
 ])
 
 function translate(value: string) {
