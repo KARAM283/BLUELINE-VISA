@@ -23,7 +23,8 @@ Internal visa operations application for Blue Line Travel. This repository and i
 - Role-aware shell for employee, manager and admin.
 - Dashboard metrics and recent case list.
 - Case list search.
-- New case creation using configured country, visa type, workflow and first stage records.
+- Standalone VISA pipelines with drag-and-drop application transfers between pipelines.
+- New case creation using configured country, visa type, and a selected pipeline.
 
 ## Important security notes
 - Never put a Supabase service-role key in Vite variables or browser code.
