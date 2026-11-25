@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import type { CSSProperties } from 'react'
 import { Bot, RefreshCw, ShieldCheck, Zap } from 'lucide-react'
 import { supabase } from './lib/supabase'
