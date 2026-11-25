@@ -401,3 +401,19 @@ td small{font-size:11px}
 @keyframes route-flow{to{stroke-dashoffset:-170}}
 @media(max-width:760px){.travel-scene{display:none}}
 @media(prefers-reduced-motion:reduce){.travel-scene *,.travel-scene *:before,.travel-scene *:after{animation:none!important;transition:none!important}}
+
+/* Clear, premium bilingual login message — one language at a time */
+.auth-aside .aside-content{z-index:4;max-width:690px;width:100%;padding:clamp(28px,5vw,72px);text-align:start}
+.auth-aside .aside-content>span{display:inline-flex;align-items:center;gap:12px;font-size:12px;font-weight:800;letter-spacing:3px;color:#72eaff;text-shadow:0 0 16px #20cfff88}
+.auth-aside .aside-content>span:before{content:"";width:30px;height:2px;background:#48dfff;box-shadow:0 0 12px #25cfff}
+.auth-aside .aside-content h2{font-family:Inter,"Segoe UI",Tahoma,sans-serif;font-size:clamp(42px,5.2vw,68px);font-weight:800;line-height:1.16;letter-spacing:-1.8px;margin:28px 0 20px;color:#f4fbff;text-shadow:0 4px 30px #071323cc}
+.auth-aside .aside-content h2 em{font-style:normal;color:#63ddff;text-shadow:0 0 22px #13bfff80}
+.auth-aside .aside-content p{max-width:570px;font-size:clamp(16px,1.5vw,20px);line-height:1.9;font-weight:500;color:#d2e8f5;margin:0;text-shadow:0 2px 16px #061526}
+.auth-aside .aside-stats{gap:clamp(18px,3vw,38px);margin-top:clamp(36px,5vw,68px);flex-wrap:wrap}
+.auth-aside .aside-stats>div{min-width:130px;max-width:190px;padding:14px 16px;border-inline-start:1px solid #5bdfff66;background:linear-gradient(110deg,#0b294a88,#0b294a22);backdrop-filter:blur(8px);border-radius:0 12px 12px 0}
+.auth-aside .aside-stats b{font-size:30px;font-weight:800;color:#7ce8ff;text-shadow:0 0 18px #12bfff99}
+.auth-aside .aside-stats small{font-size:13px;line-height:1.65;font-weight:650;color:#effaff;margin-top:7px}
+.auth-aside .aside-content-ar{font-family:"Noto Sans Arabic","IBM Plex Sans Arabic",Tahoma,sans-serif}
+.auth-aside .aside-content-ar h2{font-family:"Noto Sans Arabic","IBM Plex Sans Arabic",Tahoma,sans-serif;letter-spacing:0;line-height:1.45}
+.auth-aside .aside-content-en{font-family:Inter,"Segoe UI",Arial,sans-serif}
+@media(max-width:760px){.auth-aside .aside-content{padding:30px}.auth-aside .aside-content h2{font-size:clamp(34px,8vw,48px)}.auth-aside .aside-stats{margin-top:25px;gap:12px}.auth-aside .aside-stats>div{min-width:110px;padding:10px}}
