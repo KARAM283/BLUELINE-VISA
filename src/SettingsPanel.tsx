@@ -4,39 +4,31 @@ import { supabase } from './lib/supabase'
 
 type Country = { id: string; name: string; iso2: string | null }
 type Visa = { id: string; country_id: string; name: string }
-type Workflow = { id: string; name: string; country_id: string | null; visa_type_id: string | null }
-type Stage = { id: string; workflow_id: string; name: string; position: number; is_terminal: boolean }
+type Pipeline = { id: string; name: string }
 
 export default function SettingsPanel() {
   const [countries, setCountries] = useState<Country[]>([])
   const [visas, setVisas] = useState<Visa[]>([])
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
-  const [stages, setStages] = useState<Stage[]>([])
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [countryName, setCountryName] = useState('')
   const [countryCode, setCountryCode] = useState('')
   const [visaName, setVisaName] = useState('')
   const [visaCountry, setVisaCountry] = useState('')
-  const [workflowName, setWorkflowName] = useState('')
-  const [workflowCountry, setWorkflowCountry] = useState('')
-  const [workflowVisa, setWorkflowVisa] = useState('')
-  const [stageName, setStageName] = useState('')
-  const [stageWorkflow, setStageWorkflow] = useState('')
-  const [stageTerminal, setStageTerminal] = useState(false)
+  const [pipelineName, setPipelineName] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
   async function load() {
     if (!supabase) return
-    const [c, v, w, s] = await Promise.all([
+    const [c, v, p] = await Promise.all([
       supabase.from('countries').select('id,name,iso2').order('name'),
       supabase.from('visa_types').select('id,country_id,name').order('name'),
-      supabase.from('workflow_templates').select('id,name,country_id,visa_type_id').order('name'),
-      supabase.from('workflow_stages').select('id,workflow_id,name,position,is_terminal').order('position')
+      supabase.from('visa_pipelines').select('id,name').eq('is_active', true).order('created_at')
     ])
-    const issue = c.error || v.error || w.error || s.error
+    const issue = c.error || v.error || p.error
     if (issue) { setError(issue.message); return }
-    setCountries(c.data ?? []); setVisas(v.data ?? []); setWorkflows(w.data ?? []); setStages(s.data ?? [])
+    setCountries(c.data ?? []); setVisas(v.data ?? []); setPipelines(p.data ?? [])
   }
   useEffect(() => { void load() }, [])
 
@@ -77,23 +69,11 @@ export default function SettingsPanel() {
     </section>
     <section style={card}>
       <h2 style={heading}>Pipelines</h2>
-      <form style={form} onSubmit={e => { e.preventDefault(); void save(() => supabase!.from('workflow_templates').insert({ name: workflowName.trim(), country_id: workflowCountry || null, visa_type_id: workflowVisa || null })) }}>
-        <input style={field} placeholder="اسم Pipeline" value={workflowName} onChange={e => setWorkflowName(e.target.value)} required />
-        <select style={field} value={workflowCountry} onChange={e => { setWorkflowCountry(e.target.value); setWorkflowVisa('') }}><option value="">كل الدول (اختياري)</option>{countries.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-        <select style={field} value={workflowVisa} onChange={e => setWorkflowVisa(e.target.value)}><option value="">كل أنواع الفيزا (اختياري)</option>{visas.filter(x => !workflowCountry || x.country_id === workflowCountry).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+      <form style={form} onSubmit={e => { e.preventDefault(); void save(() => supabase!.rpc('create_visa_pipeline', { p_name: pipelineName.trim() })) }}>
+        <input style={field} placeholder="اسم Pipeline" value={pipelineName} onChange={e => setPipelineName(e.target.value)} required />
         <button style={button} disabled={busy}>إضافة Pipeline</button>
       </form>
-      <div style={{ fontSize: 11, color: '#647187' }}>{workflows.length ? workflows.map(x => x.name).join(' · ') : 'لا توجد Pipelines'}</div>
-    </section>
-    <section style={card}>
-      <h2 style={heading}>مراحل الـ Pipeline</h2>
-      <form style={form} onSubmit={e => { e.preventDefault(); const position = stages.filter(x => x.workflow_id === stageWorkflow).reduce((m,x) => Math.max(m,x.position), -1) + 1; void save(() => supabase!.from('workflow_stages').insert({ workflow_id: stageWorkflow, name: stageName.trim(), position, is_terminal: stageTerminal })) }}>
-        <select style={field} value={stageWorkflow} onChange={e => setStageWorkflow(e.target.value)} required><option value="">اختر Pipeline</option>{workflows.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-        <input style={field} placeholder="اسم المرحلة" value={stageName} onChange={e => setStageName(e.target.value)} required />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: '#647187' }}><input type="checkbox" checked={stageTerminal} onChange={e => setStageTerminal(e.target.checked)} /> مرحلة نهائية</label>
-        <button style={button} disabled={busy || !workflows.length}>إضافة مرحلة</button>
-      </form>
-      {workflows.map(w => <div key={w.id} style={{ padding: '9px 0', borderTop: '1px solid #f0f2f6', fontSize: 11 }}><b>{w.name}</b><div style={{ color: '#748095', marginTop: 5 }}>{stages.filter(s => s.workflow_id === w.id).sort((a,b) => a.position-b.position).map(s => s.name + (s.is_terminal ? ' ✓' : '')).join(' ← ') || 'لم تُضف مراحل بعد'}</div></div>)}
+      <div style={{ fontSize: 11, color: '#647187' }}>{pipelines.length ? pipelines.map(x => x.name).join(' · ') : 'لا توجد Pipelines'}</div>
     </section>
   </div>
 }
