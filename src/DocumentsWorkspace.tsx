@@ -28,7 +28,7 @@ export default function DocumentsWorkspace({ cases, userId }: { cases: VisaCase[
     setLoading(true); setError(''); setNotice('')
     const [reqResult, typeResult, docResult] = await Promise.all([
       supabase.from('document_requirements').select('id,document_type_id,is_required,instructions').eq('visa_type_id', selectedCase.visa_type_id),
-      supabase.from('document_types').select('id,name,description').eq('is_active', true).order('name'),
+      supabase.from('document_types').select('id,name,description').order('name'),
       supabase.from('case_documents').select('id,document_type_id,storage_path,original_filename,mime_type,uploaded_at,review_status,review_note').eq('case_id', selectedCase.id).order('uploaded_at', { ascending: false })
     ])
     const failure = reqResult.error || typeResult.error || docResult.error
