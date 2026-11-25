@@ -76,19 +76,19 @@ export default function SettingsPanel() {
       <div style={{ fontSize: 11, color: '#647187' }}>{visas.length ? visas.map(x => `${countries.find(c => c.id === x.country_id)?.name ?? '—'}: ${x.name}`).join(' · ') : 'لا توجد أنواع تأشيرات'}</div>
     </section>
     <section style={card}>
-      <h2 style={heading}>مسارات العمل</h2>
+      <h2 style={heading}>Pipelines</h2>
       <form style={form} onSubmit={e => { e.preventDefault(); void save(() => supabase!.from('workflow_templates').insert({ name: workflowName.trim(), country_id: workflowCountry || null, visa_type_id: workflowVisa || null })) }}>
-        <input style={field} placeholder="اسم المسار" value={workflowName} onChange={e => setWorkflowName(e.target.value)} required />
+        <input style={field} placeholder="اسم Pipeline" value={workflowName} onChange={e => setWorkflowName(e.target.value)} required />
         <select style={field} value={workflowCountry} onChange={e => { setWorkflowCountry(e.target.value); setWorkflowVisa('') }}><option value="">كل الدول (اختياري)</option>{countries.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
         <select style={field} value={workflowVisa} onChange={e => setWorkflowVisa(e.target.value)}><option value="">كل أنواع الفيزا (اختياري)</option>{visas.filter(x => !workflowCountry || x.country_id === workflowCountry).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-        <button style={button} disabled={busy}>إضافة مسار</button>
+        <button style={button} disabled={busy}>إضافة Pipeline</button>
       </form>
-      <div style={{ fontSize: 11, color: '#647187' }}>{workflows.length ? workflows.map(x => x.name).join(' · ') : 'لا توجد مسارات عمل'}</div>
+      <div style={{ fontSize: 11, color: '#647187' }}>{workflows.length ? workflows.map(x => x.name).join(' · ') : 'لا توجد Pipelines'}</div>
     </section>
     <section style={card}>
-      <h2 style={heading}>مراحل المسار</h2>
+      <h2 style={heading}>مراحل الـ Pipeline</h2>
       <form style={form} onSubmit={e => { e.preventDefault(); const position = stages.filter(x => x.workflow_id === stageWorkflow).reduce((m,x) => Math.max(m,x.position), -1) + 1; void save(() => supabase!.from('workflow_stages').insert({ workflow_id: stageWorkflow, name: stageName.trim(), position, is_terminal: stageTerminal })) }}>
-        <select style={field} value={stageWorkflow} onChange={e => setStageWorkflow(e.target.value)} required><option value="">اختر المسار</option>{workflows.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+        <select style={field} value={stageWorkflow} onChange={e => setStageWorkflow(e.target.value)} required><option value="">اختر Pipeline</option>{workflows.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
         <input style={field} placeholder="اسم المرحلة" value={stageName} onChange={e => setStageName(e.target.value)} required />
         <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: '#647187' }}><input type="checkbox" checked={stageTerminal} onChange={e => setStageTerminal(e.target.checked)} /> مرحلة نهائية</label>
         <button style={button} disabled={busy || !workflows.length}>إضافة مرحلة</button>
