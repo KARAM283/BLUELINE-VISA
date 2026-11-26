@@ -13,6 +13,27 @@ const pipelineColors = ['#64748b', '#2563eb', '#8b5cf6', '#d97706', '#059669', '
 const money = (n: number) => new Intl.NumberFormat('en-US').format(n)
 const CASE_COLUMNS = 'id,case_number,customer_full_name,customer_phone,date_of_birth,expire_date,country_id,visa_type_id,pipeline_id,status,priority,due_at,created_at,created_by,assigned_to'
 
+function appConfirm(message:string):Promise<boolean>{
+ return new Promise(resolve=>{
+  const backdrop=document.createElement('div');backdrop.className='modal-backdrop'
+  const card=document.createElement('section');card.className='modal-card global-confirm-modal';card.setAttribute('role','alertdialog');card.setAttribute('aria-modal','true')
+  const head=document.createElement('div');head.className='modal-head'
+  const copy=document.createElement('div');const eyebrow=document.createElement('span');eyebrow.className='eyebrow';eyebrow.textContent='CONFIRM ACTION'
+  const title=document.createElement('h2');title.textContent='تأكيد العملية'
+  const description=document.createElement('p');description.textContent=message;copy.append(eyebrow,title,description)
+  const close=document.createElement('button');close.type='button';close.className='icon-btn';close.setAttribute('aria-label','إغلاق');close.textContent='×';head.append(copy,close)
+  const actions=document.createElement('div');actions.className='modal-actions'
+  const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary-btn';cancel.textContent='إلغاء'
+  const accept=document.createElement('button');accept.type='button';accept.className='primary-btn';accept.textContent='تأكيد الحذف'
+  actions.append(cancel,accept);card.append(head,actions);backdrop.append(card);document.body.append(backdrop)
+  const finish=(value:boolean)=>{document.removeEventListener('keydown',onKey);backdrop.remove();resolve(value)}
+  const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')finish(false)}
+  close.addEventListener('click',()=>finish(false));cancel.addEventListener('click',()=>finish(false));accept.addEventListener('click',()=>finish(true))
+  backdrop.addEventListener('mousedown',event=>{if(event.target===backdrop)finish(false)})
+  document.addEventListener('keydown',onKey);accept.focus()
+ })
+}
+
 export default function App() {
   const { language, toggleLanguage, isEnglish } = useLanguage()
   const [session, setSession] = useState<Session | null>(null)
@@ -312,7 +333,7 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
   }
   await load();onUpdated();setBusy(false);if(!error)setNotice('تم تحديث مرفقات المعاملة.')
  }
- async function deleteCase(){if(!supabase||!canDelete||deleting||busy)return;if(!window.confirm(`تأكيد حذف معاملة "${item.customer_full_name}"؟ سيتم حذف بياناتها ومرفقاتها نهائياً.`))return;setDeleting(true);setError('');setNotice('');try{const docs=await supabase.from('case_documents').select('storage_path').eq('case_id',item.id);if(docs.error)throw docs.error;const paths=(docs.data??[]).map(doc=>doc.storage_path);if(paths.length){const removed=await supabase.storage.from('visa-case-documents').remove(paths);if(removed.error)throw removed.error}const result=await supabase.from('visa_cases').delete().eq('id',item.id).select('id').maybeSingle();if(result.error)throw result.error;if(!result.data)throw new Error('لم يتم حذف المعاملة. تحقق من الصلاحيات.');onDeleted()}catch(err){setError(err instanceof Error?err.message:'تعذر حذف المعاملة')}finally{setDeleting(false)}}
+ async function deleteCase(){if(!supabase||!canDelete||deleting||busy)return;if(!(await appConfirm(`تأكيد حذف معاملة "${item.customer_full_name}"؟ سيتم حذف بياناتها ومرفقاتها نهائياً.`)))return;setDeleting(true);setError('');setNotice('');try{const docs=await supabase.from('case_documents').select('storage_path').eq('case_id',item.id);if(docs.error)throw docs.error;const paths=(docs.data??[]).map(doc=>doc.storage_path);if(paths.length){const removed=await supabase.storage.from('visa-case-documents').remove(paths);if(removed.error)throw removed.error}const result=await supabase.from('visa_cases').delete().eq('id',item.id).select('id').maybeSingle();if(result.error)throw result.error;if(!result.data)throw new Error('لم يتم حذف المعاملة. تحقق من الصلاحيات.');onDeleted()}catch(err){setError(err instanceof Error?err.message:'تعذر حذف المعاملة')}finally{setDeleting(false)}}
  async function openAttachment(file:CaseAttachment){if(!supabase)return;const tab=window.open('about:blank','_blank');const result=await supabase.storage.from('visa-case-documents').createSignedUrl(file.storage_path,120);if(result.error||!result.data?.signedUrl){tab?.close();setError(result.error?.message||'تعذر فتح الملف');return}if(tab)tab.location.href=result.data.signedUrl;else window.location.href=result.data.signedUrl}
  return createPortal(<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal-card case-details-modal"><div className="modal-head"><div><span className="eyebrow">VISA / CASE FILE</span><h2>{item.customer_full_name}</h2><p>{item.case_number||'رقم المعاملة غير متوفر'}</p></div><button type="button" className="icon-btn" onClick={onClose}><X/></button></div>
  <div className="case-details-grid"><div><small>NAME</small><b>{item.customer_full_name}</b></div><div><small>PHONE</small><b>{item.customer_phone||'—'}</b></div><div><small>DATE OF BIRTH</small><b>{item.date_of_birth||'—'}</b></div><div><small>EXPIRE DATE</small><b>{item.expire_date||'—'}</b></div></div>
@@ -577,7 +598,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  }
  async function deleteEmployee(employee:CompanyEmployee){
   const client=supabase
-  if(!client||!window.confirm(isEnglish?'Delete employee '+employee.full_name+'?':'تأكيد حذف الموظف '+employee.full_name+'؟'))return
+  if(!client||!(await appConfirm(isEnglish?'Delete employee '+employee.full_name+'?':'تأكيد حذف الموظف '+employee.full_name+'؟')))return
   const result=await client.from('company_employees').delete().eq('id',employee.id)
   if(result.error){setEmployeeError(result.error.message);return}
   const paths=[employee.passport_path,employee.profile_photo_path].filter((path):path is string=>!!path);if(paths.length)await client.storage.from('employee-passports').remove(paths)
@@ -627,7 +648,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   finally{setEmployeeSaving(false)}
  }
  async function deleteIndividualCustomer(customer:IndividualCustomerDisplay){
-  const client=supabase;if(!client||!window.confirm(isEnglish?'Delete this customer profile?':'تأكيد حذف ملف العميل؟'))return
+  const client=supabase;if(!client||!(await appConfirm(isEnglish?'Delete this customer profile?':'تأكيد حذف ملف العميل؟')))return
   const {data:files}=await client.from('individual_customer_attachments').select('file_path').eq('customer_id',customer.id)
   const removed=await client.from('individual_customers').delete().eq('id',customer.id);if(removed.error){setEmployeeError(removed.error.message);return}
   const paths=[customer.passport_path,customer.profile_photo_path,...(files??[]).map((x:any)=>x.file_path)].filter((x):x is string=>!!x);if(paths.length)await client.storage.from('employee-passports').remove(paths)
@@ -712,7 +733,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
         <div className="employee-attachments-heading"><div><b>{isEnglish?'Additional attachments':'مرفقات إضافية'}</b><span>{isEnglish?'Upload contracts, certificates, ID cards and other documents.':'أرفق العقود والشهادات والهويات وأي مستندات أخرى.'}</span></div><label className="employee-attachment-add"><Plus size={15}/>{isEnglish?'Add files':'إضافة مرفقات'}<input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx,.xls,.xlsx" onChange={e=>{const files=Array.from(e.target.files??[]);const oversized=files.find(file=>file.size>15*1024*1024);if(oversized){setEmployeeError(isEnglish?'Each attachment must be 15 MB or less':'يجب ألا يتجاوز حجم كل مرفق 15 MB');e.currentTarget.value='';return}setEmployeeError('');setNewEmployeeAttachments(current=>[...current,...files]);e.currentTarget.value=''}} disabled={employeeSaving}/></label></div>
         {attachmentsLoading?<p className="employee-file-hint">{isEnglish?'Loading attachments...':'جارٍ تحميل المرفقات...'}</p>:null}
         {(employeeAttachments.length>0||newEmployeeAttachments.length>0)?<div className="employee-attachments-list">
-         {employeeAttachments.map(file=><div className="employee-attachment-item" key={file.id}><FileText size={19}/><div className="employee-attachment-info"><b>{file.file_name}</b><small>{file.file_size?Math.max(1,Math.round(file.file_size/1024))+' KB':''}</small></div>{file.file_url&&<a href={file.file_url} target="_blank" rel="noreferrer" className="employee-attachment-open">{isEnglish?'Preview':'معاينة'} <ExternalLink size={14}/></a>}<button type="button" className="icon-btn" title={isEnglish?'Remove attachment':'حذف المرفق'} onClick={async()=>{const client=supabase;if(!client||!window.confirm(isEnglish?'Remove this attachment?':'هل تريد حذف هذا المرفق؟'))return;const removed=await client.from('company_employee_attachments').delete().eq('id',file.id);if(removed.error){setEmployeeError(removed.error.message);return}await client.storage.from('employee-passports').remove([file.file_path]);setEmployeeAttachments(current=>current.filter(item=>item.id!==file.id))}}><Trash2 size={14}/></button></div>)}
+         {employeeAttachments.map(file=><div className="employee-attachment-item" key={file.id}><FileText size={19}/><div className="employee-attachment-info"><b>{file.file_name}</b><small>{file.file_size?Math.max(1,Math.round(file.file_size/1024))+' KB':''}</small></div>{file.file_url&&<a href={file.file_url} target="_blank" rel="noreferrer" className="employee-attachment-open">{isEnglish?'Preview':'معاينة'} <ExternalLink size={14}/></a>}<button type="button" className="icon-btn" title={isEnglish?'Remove attachment':'حذف المرفق'} onClick={async()=>{const client=supabase;if(!client||!(await appConfirm(isEnglish?'Remove this attachment?':'هل تريد حذف هذا المرفق؟')))return;const removed=await client.from('company_employee_attachments').delete().eq('id',file.id);if(removed.error){setEmployeeError(removed.error.message);return}await client.storage.from('employee-passports').remove([file.file_path]);setEmployeeAttachments(current=>current.filter(item=>item.id!==file.id))}}><Trash2 size={14}/></button></div>)}
          {newEmployeeAttachments.map((file,index)=><div className="employee-attachment-item pending" key={file.name+'-'+index}><FileText size={19}/><div className="employee-attachment-info"><b>{file.name}</b><small>{Math.max(1,Math.round(file.size/1024))} KB · {isEnglish?'Pending upload':'بانتظار الرفع'}</small></div><button type="button" className="icon-btn" title={isEnglish?'Remove file':'إزالة الملف'} onClick={()=>setNewEmployeeAttachments(current=>current.filter((_,i)=>i!==index))}><X size={15}/></button></div>)}
         </div>:<div className="employee-attachments-empty">{isEnglish?'No additional attachments yet.':'لا توجد مرفقات إضافية حالياً.'}</div>}
        </section>
