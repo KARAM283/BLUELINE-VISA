@@ -157,6 +157,37 @@ Deno.serve(async (req: Request) => {
       await db.from("whatsapp_messages").insert({ conversation_id: conversation.id, contact_id: conversation.contact_id, provider_message_id: sent?.id || null, direction: "outbound", message_type: "template", template_name: body.template_name, template_language: body.language || "en", body: null, status: "sent", sent_by: userData.user.id });
       return json({ sent: true, message_id: sent?.id || null });
     }
+    if (action === "send_campaign") {
+      const { data: campaign, error: campaignError } = await db.from("whatsapp_campaigns").select("*").eq("id", body.campaign_id).single();
+      if (campaignError || !campaign) return json({ error: "Campaign not found" }, 404);
+      if (!campaign.template_name) return json({ error: "Campaign template is missing" }, 400);
+      await db.from("whatsapp_campaigns").update({ status: "processing", started_at: new Date().toISOString() }).eq("id", campaign.id);
+      const { data: recipients, error: recipientError } = await db.from("whatsapp_campaign_recipients").select("id,contact_id,phone_e164,whatsapp_contacts(consent_status)").eq("campaign_id", campaign.id).eq("status", "queued").limit(100);
+      if (recipientError) throw recipientError;
+      let sentCount = 0, failedCount = 0;
+      for (const recipient of recipients || []) {
+        if ((recipient as any).whatsapp_contacts?.consent_status !== "opted_in") {
+          await db.from("whatsapp_campaign_recipients").update({ status: "skipped", error_message: "No recorded opt-in consent" }).eq("id", recipient.id);
+          continue;
+        }
+        try {
+          const result = await graphPost(`${PHONE_NUMBER_ID}/messages`, {
+            messaging_product: "whatsapp", to: recipient.phone_e164, type: "template",
+            template: { name: campaign.template_name, language: { code: campaign.template_language }, components: campaign.template_components || [] }
+          });
+          const providerId = result.messages?.[0]?.id || null;
+          await db.from("whatsapp_campaign_recipients").update({ status: "sent", provider_message_id: providerId, sent_at: new Date().toISOString() }).eq("id", recipient.id);
+          sentCount++;
+        } catch (sendError) {
+          await db.from("whatsapp_campaign_recipients").update({ status: "failed", error_message: sendError instanceof Error ? sendError.message : "Send failed" }).eq("id", recipient.id);
+          failedCount++;
+        }
+      }
+      const remaining = await db.from("whatsapp_campaign_recipients").select("id", { count: "exact", head: true }).eq("campaign_id", campaign.id).eq("status", "queued");
+      const finalStatus = (remaining.count || 0) > 0 ? "paused" : failedCount > 0 && sentCount === 0 ? "failed" : "completed";
+      await db.from("whatsapp_campaigns").update({ status: finalStatus, completed_at: finalStatus === "completed" || finalStatus === "failed" ? new Date().toISOString() : null }).eq("id", campaign.id);
+      return json({ processed: sentCount + failedCount, sent: sentCount, failed: failedCount, remaining: remaining.count || 0, status: finalStatus });
+    }
     return json({ error: "Unsupported action" }, 400);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Request failed" }, 500);
