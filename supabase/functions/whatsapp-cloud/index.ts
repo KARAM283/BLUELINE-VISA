@@ -206,8 +206,13 @@ Deno.serve(async (req: Request) => {
             template: { name: campaign.template_name, language: { code: campaign.template_language }, components: campaign.template_components || [] }
           });
           const providerId = result.messages?.[0]?.id || null;
-          await db.from("whatsapp_campaign_recipients").update({ status: "sent", provider_message_id: providerId, sent_at: new Date().toISOString() }).eq("id", recipient.id);
+          const sentAt = new Date().toISOString();
+          await db.from("whatsapp_campaign_recipients").update({ status: "sent", provider_message_id: providerId, sent_at: sentAt }).eq("id", recipient.id);
+          const conversation = await getOrCreateConversation({ id: recipient.contact_id });
+          await db.from("whatsapp_messages").insert({ conversation_id: conversation.id, contact_id: recipient.contact_id, provider_message_id: providerId, direction: "outbound", message_type: "template", template_name: campaign.template_name, template_language: campaign.template_language, body: null, status: "sent", sent_by: userData.user.id, occurred_at: sentAt });
+          await db.from("whatsapp_conversations").update({ last_message_at: sentAt, last_message_preview: `Campaign: ${campaign.name}` }).eq("id", conversation.id);
           sentCount++;
+          await new Promise(resolve => setTimeout(resolve, 200));
         } catch (sendError) {
           await db.from("whatsapp_campaign_recipients").update({ status: "failed", error_message: sendError instanceof Error ? sendError.message : "Send failed" }).eq("id", recipient.id);
           failedCount++;
