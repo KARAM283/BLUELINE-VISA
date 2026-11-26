@@ -516,17 +516,18 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
    }
    const attachmentRows=newEmployeeAttachments.map(file=>{const ext=file.name.split('.').pop()?.toLowerCase()||'bin';return {file,path:openedCompany.id+'/'+employeeId+'/attachments/'+crypto.randomUUID()+'.'+ext}})
    for(const item of attachmentRows)uploadTasks.push((async()=>{const result=await client.storage.from('employee-passports').upload(item.path,item.file,{contentType:item.file.type||'application/octet-stream',upsert:false});if(result.error)throw result.error;uploadedPaths.push(item.path)})())
-   await Promise.all(uploadTasks)
+   const uploadResults=await Promise.allSettled(uploadTasks)
+   const failedUpload=uploadResults.find(result=>result.status==='rejected')
+   if(failedUpload?.status==='rejected')throw failedUpload.reason
    const dbTasks:Promise<void>[]=[]
    if(nextPassportPath)dbTasks.push((async()=>{const saved=await client.from('company_employees').update({passport_path:nextPassportPath}).eq('id',employeeId);if(saved.error)throw saved.error})())
    if(attachmentRows.length)dbTasks.push((async()=>{const saved=await client.from('company_employee_attachments').insert(attachmentRows.map(({file,path})=>({employee_id:employeeId,file_name:file.name,file_path:path,mime_type:file.type||null,file_size:file.size})));if(saved.error)throw saved.error})())
    await Promise.all(dbTasks)
    if(nextPassportPath&&editingEmployee?.passport_path)void client.storage.from('employee-passports').remove([editingEmployee.passport_path])
-   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,created_at').eq('company_id',openedCompany.id).order('full_name')
-   if(refreshed.error)throw refreshed.error
-   const rows=(refreshed.data??[]) as CompanyEmployee[]
-   const withPassports=await Promise.all(rows.map(async row=>{if(!row.passport_path)return {...row,passport_url:null};const signed=await client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600);return {...row,passport_url:signed.data?.signedUrl??null}}))
-   setEmployees(withPassports);setEmployeeFormOpen(false);setEditingEmployee(null);setEmployeePassport(null);setNewEmployeeAttachments([]);setEmployeeAttachments([])
+   const passportUrl=nextPassportPath?(await client.storage.from('employee-passports').createSignedUrl(nextPassportPath,3600)).data?.signedUrl??null:editingEmployee?.passport_url??null
+   const savedEmployee:EmployeeDisplay={...(editingEmployee??{} as EmployeeDisplay),id:employeeId,company_id:openedCompany.id,...payload,employee_number:editingEmployee?.employee_number??null,email:editingEmployee?.email??null,passport_path:nextPassportPath??editingEmployee?.passport_path??null,created_at:editingEmployee?.created_at??new Date().toISOString(),passport_url:passportUrl}
+   setEmployees(current=>[...current.filter(item=>item.id!==employeeId),savedEmployee].sort((a,b)=>a.full_name.localeCompare(b.full_name)))
+   setEmployeeFormOpen(false);setEditingEmployee(null);setEmployeePassport(null);setNewEmployeeAttachments([]);setEmployeeAttachments([])
   }catch(err){
    if(uploadedPaths.length)await client.storage.from('employee-passports').remove(uploadedPaths)
    setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not save employee':'تعذر حفظ بيانات الموظف'))
