@@ -442,3 +442,33 @@ td small{font-size:11px}
 .company-search-input::placeholder{color:var(--muted);opacity:.85}
 .company-search-clear{width:30px;height:30px;flex:0 0 auto;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;transition:background .15s ease,color .15s ease}
 .company-search-clear:hover{background:var(--border);color:var(--text)}
+
+
+/* Company employee directory */
+.employee-section-card{width:100%;display:flex;align-items:center;gap:20px;text-align:start;padding:22px 24px;margin-top:26px;border:1px solid var(--border);border-radius:18px;background:var(--surface);cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.employee-section-card:hover{border-color:#9aafcb;box-shadow:0 10px 26px #1729430d;transform:translateY(-2px)}
+.employee-section-icon{width:58px;height:58px;flex:0 0 auto;border-radius:15px;display:grid;place-items:center;background:#eaf1fb;color:#315f99}
+.employee-section-copy{flex:1;min-width:0}
+.employee-section-copy h3{font-size:21px;margin:5px 0}
+.employee-section-copy p{color:var(--muted);font-size:13px;margin:0;line-height:1.7}
+.employee-section-count{min-width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);font-weight:700;font-size:17px}
+.employee-section-open{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:13px;font-weight:600;color:var(--primary,#315f99)}
+.employee-directory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}
+.employee-directory-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:275px;box-shadow:0 5px 18px #17294308;transition:transform .18s ease,box-shadow .18s ease}
+.employee-directory-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px #17294312}
+.employee-avatar{width:76px;height:76px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#e7eef8,#f7f9fc);border:1px solid #dfe7f1;color:#315f99;font-size:28px;font-weight:700}
+.employee-directory-name{font-size:18px;line-height:1.5;text-align:center;margin:13px 0 3px;color:var(--text);overflow-wrap:anywhere}
+.employee-directory-role{font-size:13px;color:var(--muted);min-height:22px}
+.employee-directory-meta{font-size:12px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.employee-directory-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:auto;padding-top:17px}
+.employee-directory-actions button{font-size:11px;padding:10px 8px;white-space:nowrap}
+.employee-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.employee-form-grid label{min-width:0}
+.employee-form-grid input{width:100%;box-sizing:border-box}
+.employee-passport-upload{margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.employee-passport-upload>label{display:block;margin-bottom:10px}
+.employee-passport-upload>label span{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:5px}
+.employee-passport-preview{margin-top:14px;width:100%;height:310px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#f5f7fa;display:grid;place-items:center}
+.employee-passport-preview img{width:100%;height:100%;object-fit:contain}
+.employee-passport-preview iframe{width:100%;height:100%;border:0;background:white}
+@media(max-width:600px){.employee-section-card{gap:12px;padding:16px;flex-wrap:wrap}.employee-section-icon{width:48px;height:48px}.employee-section-count{margin-inline-start:auto}.employee-section-open{width:100%;justify-content:flex-end}.employee-form-grid{grid-template-columns:1fr}.employee-directory-actions{grid-template-columns:1fr}}
