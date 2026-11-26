@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       }
       if (typeof body.email === "string") {
         const email = body.email.trim().toLowerCase();
-        if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return reply({ error: "البريد الإلكتروني غير صالح." }, 400);
+        if (!/^[^@ ]+@[^@ ]+[.][^@ ]+$/.test(email)) return reply({ error: "البريد الإلكتروني غير صالح." }, 400);
         authPatch.email = email;
         authPatch.email_confirm = true;
       }
