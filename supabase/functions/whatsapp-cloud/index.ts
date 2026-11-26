@@ -14,7 +14,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const normalizePhone = (value: string) => value.replace(/[^0-9]/g, "");
 
 async function verifySignature(req: Request, raw: string) {
-  if (!APP_SECRET) return true; // Configure META_APP_SECRET to enforce webhook signature verification.
+  if (!APP_SECRET) return false; // Refuse unsigned webhook events until META_APP_SECRET is configured.
   const signature = req.headers.get("x-hub-signature-256") || "";
   if (!signature.startsWith("sha256=")) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(APP_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
