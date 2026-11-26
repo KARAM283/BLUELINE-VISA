@@ -625,7 +625,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   const {data:files}=await client.from('individual_customer_attachments').select('file_path').eq('customer_id',customer.id)
   const removed=await client.from('individual_customers').delete().eq('id',customer.id);if(removed.error){setEmployeeError(removed.error.message);return}
   const paths=[customer.passport_path,customer.profile_photo_path,...(files??[]).map((x:any)=>x.file_path)].filter((x):x is string=>!!x);if(paths.length)await client.storage.from('employee-passports').remove(paths)
-  setIndividualCustomers(current=>current.filter(x=>x.id!==customer.id&&x.parent_customer_id!==customer.id));if(selectedIndividualCustomer?.id===customer.id)setSelectedIndividualCustomer(null)
+  setIndividualCustomers(current=>current.filter(x=>x.id!==customer.id).map(x=>x.parent_customer_id===customer.id?{...x,parent_customer_id:null}:x));if(selectedIndividualCustomer?.id===customer.id)setSelectedIndividualCustomer(null)
  }
  async function createCustomerFromEmployee(employee:EmployeeDisplay){
   const client=supabase;if(!client||customerProfileBusy)return;setCustomerProfileBusy(true);setEmployeeError('')
