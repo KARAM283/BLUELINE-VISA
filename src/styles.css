@@ -611,3 +611,22 @@ td small{font-size:11px}
 @media(max-width:900px){.individual-customer-detail>.individual-customer-hero{grid-template-columns:1fr}.individual-customer-detail .individual-customer-hero-actions{flex-direction:row;width:100%!important;min-width:0}.individual-customer-detail .individual-customer-hero-actions button{flex:1}}
 @media(max-width:640px){.individual-customer-detail{padding:13px!important}.individual-customer-detail>.individual-customer-hero{padding:15px!important;gap:15px}.individual-customer-detail .individual-customer-identity{grid-template-columns:72px minmax(0,1fr);gap:12px}.individual-customer-detail .individual-customer-hero-photo{width:72px;height:72px;min-width:72px;border-radius:11px}.individual-customer-detail .individual-customer-hero-info h2{font-size:19px}.individual-customer-detail .individual-customer-contact{align-items:flex-start;flex-direction:column;gap:6px}.individual-customer-detail .individual-customer-contact span{font-size:11px}.individual-customer-detail .individual-customer-hero-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}.individual-customer-detail .individual-customer-hero-actions button{min-width:0;white-space:normal;font-size:11px;padding:8px 6px}.individual-customer-detail .individual-customer-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.individual-customer-detail .individual-customer-info-grid>div{min-height:70px;padding:10px}.individual-customer-detail .individual-family-section .individual-customer-grid{grid-template-columns:1fr}}
 @media(max-width:360px){.individual-customer-detail .individual-customer-identity{grid-template-columns:1fr}.individual-customer-detail .individual-customer-hero-actions{grid-template-columns:1fr}.individual-customer-detail .individual-customer-info-grid{grid-template-columns:1fr}}
+
+
+/* Individual customer directory cards — separate from the customer detail view */
+.individual-customer-grid:not(.individual-customer-detail .individual-customer-grid){grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:18px;align-items:stretch}
+.individual-customer-card:not(.compact){display:flex;flex-direction:column;align-items:stretch;gap:16px;min-height:190px;padding:20px;border:1px solid #e2e9f1;border-radius:18px;background:linear-gradient(150deg,#fff 0%,#fbfcfe 100%);box-shadow:0 6px 20px #17294308;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.individual-customer-card:not(.compact):hover{transform:translateY(-2px);border-color:#c8d6e7;box-shadow:0 12px 26px #17294312}
+.individual-customer-card-main{display:flex;align-items:flex-start;gap:15px;min-width:0;flex:1}
+.individual-customer-card:not(.compact) .individual-customer-card-photo{width:68px;height:68px;flex:0 0 68px;border-radius:16px;background:#edf2f8;border:1px solid #dce5ef;color:#58779c}
+.individual-customer-card-info{gap:7px;padding-top:2px}
+.individual-customer-card-info b{font-size:15px;line-height:1.45;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.individual-customer-card-info .individual-customer-card-phone{font-size:12px;color:#63748a;direction:ltr;text-align:start}
+.individual-customer-card-info .individual-customer-card-passport{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px;direction:ltr;text-align:left}
+.individual-customer-card-info .individual-customer-card-passport span{font-size:9px;letter-spacing:.8px;font-weight:800;color:#8997a8}
+.individual-customer-card-info .individual-customer-card-passport strong{font-size:11px;font-weight:700;color:#344b66}
+.individual-customer-card-info em{display:inline-flex;align-items:center;gap:5px;width:max-content;margin-top:2px;padding:5px 8px;border-radius:7px;background:#edf4fc;color:#315f99;font-size:10px}
+.individual-customer-card-actions{display:flex;align-items:center;gap:9px;padding-top:13px;border-top:1px solid #edf0f4}
+.individual-customer-card-actions .secondary-btn{flex:1;justify-content:center;min-height:38px;font-size:12px}
+.individual-customer-card-actions .icon-btn{width:38px;height:38px;flex:0 0 38px;border:1px solid #e8edf3;border-radius:10px;color:#8190a2}
+@media(max-width:680px){.individual-customer-card:not(.compact){flex-direction:column;align-items:stretch;min-height:0}.individual-customer-card:not(.compact) .individual-customer-card-actions{width:100%;justify-content:stretch}.individual-customer-card-main{gap:12px}.individual-customer-card:not(.compact) .individual-customer-card-photo{width:60px;height:60px;flex-basis:60px}}
