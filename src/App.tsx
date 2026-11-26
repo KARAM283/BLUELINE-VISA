@@ -533,8 +533,10 @@ function TravelOperationsWorkspace(){
       <div><h3 style={{fontSize:24}}>الشركات</h3><p style={{color:'var(--muted)',marginTop:6}}>دليل الشركات والمؤسسات المسجلة.</p></div>
       <button type="button" className="primary-btn" onClick={()=>startCompanyForm(null)}><Plus size={17}/> إضافة شركة</button>
      </div>
-     <div style={{display:'flex',alignItems:'center',gap:10,marginTop:22,padding:'0 14px',border:'1px solid var(--border)',borderRadius:12,background:'var(--surface)',minHeight:48}}>
-      <Search size={18} color="var(--muted)"/><input aria-label="بحث عن شركة" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} placeholder="ابحث باسم الشركة أو رقمها أو موقعها..." style={{border:0,outline:0,background:'transparent',width:'100%',color:'var(--text)',padding:'12px 0'}}/>
+     <div className="company-search-wrap">
+      <Search size={19} className="company-search-icon"/>
+      <input className="company-search-input" aria-label="بحث عن شركة" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} placeholder="ابحث باسم الشركة أو رقمها أو موقعها..."/>
+      {companySearch&&<button type="button" className="company-search-clear" onClick={()=>setCompanySearch('')} aria-label="مسح البحث"><X size={16}/></button>}
      </div>
      {companyNotice&&<div className="success-line" style={{marginTop:14}}>{companyNotice}</div>}
      {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
