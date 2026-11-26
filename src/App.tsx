@@ -322,13 +322,34 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 
 function TravelOperationsWorkspace(){
  const [activeApp,setActiveApp]=useState<string|null>(null)
+ const [customerSection,setCustomerSection]=useState<'companies'|'individuals'|null>(null)
  const apps=[
   {id:'customers',title:'Customers - Organization',description:'إدارة العملاء والشركات والمؤسسات وبيانات التواصل.',icon:<Building2 size={27}/>,code:'CUSTOMERS / ORGANIZATION'},
   {id:'flights',title:'Flights',description:'مساحة إدارة الرحلات ومعلومات الطيران والحجوزات.',icon:<Plane size={27}/>,code:'FLIGHT OPERATIONS'},
   {id:'whatsapp',title:'WhatsApp',description:'مساحة متابعة محادثات واتساب والتواصل مع العملاء.',icon:<MessageCircle size={27}/>,code:'CUSTOMER COMMUNICATION'}
  ]
  const selected=apps.find(app=>app.id===activeApp)
- if(selected)return <section className="panel" style={{minHeight:360,padding:32}}>
+ if(selected?.id==='customers')return <section className="panel" style={{minHeight:360,padding:32}}>
+  <button type="button" className="secondary-btn" onClick={()=>{setActiveApp(null);setCustomerSection(null)}}><ArrowLeft size={16}/> Back to Travel Operations</button>
+  <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
+   <div><span className="eyebrow">CUSTOMERS / ORGANIZATION</span><h2 style={{fontSize:28,marginTop:10}}>Customers - Organization</h2><p style={{marginTop:8}}>إدارة الشركات والعملاء الأفراد خارج الشركات.</p></div>
+   <div className="metric-icon tone-blue"><Building2 size={27}/></div>
+  </div>
+  {customerSection ? <div className="panel" style={{marginTop:28,padding:24,minHeight:180}}>
+   <button type="button" className="secondary-btn" onClick={()=>setCustomerSection(null)}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
+   <h3 style={{fontSize:22,marginTop:22}}>{customerSection==='companies'?'الشركات':'العملاء خارج الشركات'}</h3>
+   <p style={{color:'var(--muted)',marginTop:8}}>{customerSection==='companies'?'قسم إدارة الشركات والمؤسسات.':'قسم إدارة العملاء الأفراد غير المرتبطين بشركات.'}</p>
+   <div className="empty-state" style={{marginTop:24,padding:24}}><Users size={26}/><b>{customerSection==='companies'?'الشركات':'العملاء خارج الشركات'}</b><span>تم فتح القسم. يمكن إضافة سجلّات وبيانات العملاء في الخطوة التالية.</span></div>
+  </div> : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:18,marginTop:30}}>
+   <button type="button" className="panel" onClick={()=>setCustomerSection('companies')} style={{textAlign:'start',padding:26,cursor:'pointer',minHeight:170,display:'flex',flexDirection:'column',alignItems:'flex-start',gap:14}}>
+    <div className="metric-icon tone-blue"><Building2 size={27}/></div><b style={{fontSize:20}}>الشركات</b><span style={{color:'var(--muted)',fontSize:13}}>إدارة الشركات والمؤسسات.</span><span className="text-btn" style={{marginTop:'auto'}}>فتح القسم <ArrowLeft size={14}/></span>
+   </button>
+   <button type="button" className="panel" onClick={()=>setCustomerSection('individuals')} style={{textAlign:'start',padding:26,cursor:'pointer',minHeight:170,display:'flex',flexDirection:'column',alignItems:'flex-start',gap:14}}>
+    <div className="metric-icon tone-blue"><Users size={27}/></div><b style={{fontSize:20}}>العملاء خارج الشركات</b><span style={{color:'var(--muted)',fontSize:13}}>إدارة العملاء الأفراد بشكل مستقل.</span><span className="text-btn" style={{marginTop:'auto'}}>فتح القسم <ArrowLeft size={14}/></span>
+   </button>
+  </div>}
+ </section>
+ if(selected)return <section className="panel" style={{minHeight:360,padding:32}>
   <button type="button" className="secondary-btn" onClick={()=>setActiveApp(null)}><ArrowLeft size={16}/> Back to Travel Operations</button>
   <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
    <div><span className="eyebrow">{selected.code}</span><h2 style={{fontSize:28,marginTop:10}}>{selected.title}</h2><p style={{marginTop:8}}>{selected.description}</p></div>
