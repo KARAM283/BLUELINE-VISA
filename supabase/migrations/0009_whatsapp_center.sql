@@ -46,6 +46,8 @@ create table if not exists public.whatsapp_templates (
  category text, status text not null default 'unknown', components jsonb not null default '[]', last_synced_at timestamptz,
  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.whatsapp_templates drop constraint if exists whatsapp_templates_name_key;
+alter table public.whatsapp_templates add constraint whatsapp_templates_name_language_key unique(name, language);
 create table if not exists public.whatsapp_webhook_events (
  id bigint generated always as identity primary key, event_key text unique, event_type text not null, payload jsonb not null,
  processed_at timestamptz, error_message text, created_at timestamptz not null default now()
