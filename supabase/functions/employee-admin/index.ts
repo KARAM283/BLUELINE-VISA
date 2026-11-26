@@ -68,14 +68,31 @@ Deno.serve(async (req) => {
       const userId = String(body.user_id || "");
       if (!userId || userId === authData.user.id) return reply({ error: "لا يمكن تعديل حساب المدير الحالي من هذه الشاشة." }, 400);
       const patch: Record<string, unknown> = {};
-      if (typeof body.full_name === "string") patch.full_name = body.full_name.trim();
+      const authPatch: Record<string, unknown> = {};
+      if (typeof body.full_name === "string") {
+        const fullName = body.full_name.trim();
+        if (!fullName) return reply({ error: "الاسم مطلوب." }, 400);
+        patch.full_name = fullName;
+        authPatch.user_metadata = { full_name: fullName };
+      }
+      if (typeof body.email === "string") {
+        const email = body.email.trim().toLowerCase();
+        if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return reply({ error: "البريد الإلكتروني غير صالح." }, 400);
+        authPatch.email = email;
+        authPatch.email_confirm = true;
+      }
+      if (typeof body.password === "string" && body.password.length) {
+        if (body.password.length < 8) return reply({ error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل." }, 400);
+        authPatch.password = body.password;
+      }
       if (typeof body.is_active === "boolean") patch.is_active = body.is_active;
       if (Object.keys(patch).length) {
         const { error } = await admin.from("profiles").update(patch).eq("id", userId);
         if (error) throw error;
       }
-      if (typeof body.is_active === "boolean") {
-        const { error } = await admin.auth.admin.updateUserById(userId, { ban_duration: body.is_active ? "none" : "876000h" });
+      if (Object.keys(authPatch).length || typeof body.is_active === "boolean") {
+        if (typeof body.is_active === "boolean") authPatch.ban_duration = body.is_active ? "none" : "876000h";
+        const { error } = await admin.auth.admin.updateUserById(userId, authPatch);
         if (error) throw error;
       }
       if (typeof body.role === "string") {
