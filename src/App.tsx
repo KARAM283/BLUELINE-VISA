@@ -346,17 +346,18 @@ function TravelOperationsWorkspace(){
  const selected=apps.find(app=>app.id===activeApp)
 
  useEffect(()=>{
-  if(!customerSection||customerSection!=='companies'||!supabase)return
+  const client=supabase
+  if(!customerSection||customerSection!=='companies'||!client)return
   let alive=true
   const load=async()=>{
    setCompaniesLoading(true);setCompanyError('')
-   const {data,error}=await supabase.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
+   const {data,error}=await client.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
    if(!alive)return
    if(error){setCompanyError(error.message);setCompaniesLoading(false);return}
    const rows=(data??[]) as CompanyRecord[]
    const withLogos=await Promise.all(rows.map(async company=>{
     if(!company.logo_path)return {...company,logo_url:null}
-    const signed=await supabase!.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
+    const signed=await client.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
     return {...company,logo_url:signed.data?.signedUrl??null}
    }))
    if(alive)setCompanies(withLogos)
