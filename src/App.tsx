@@ -8,6 +8,7 @@ import type { AppRole, Profile, VisaCase } from './types'
 import SettingsPanel from './SettingsPanel'
 import DocumentsWorkspace from './DocumentsWorkspace'
 import FlightDesk from './FlightDesk'
+import WhatsAppCenter from './WhatsAppCenter'
 import { useLanguage } from './i18n'
 
 const pipelineColors = ['#64748b', '#2563eb', '#8b5cf6', '#d97706', '#059669', '#0d9488', '#be123c']
@@ -682,6 +683,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const filteredCompanies=companies.filter(company=>[company.name,company.company_number,company.location].some(value=>value.toLocaleLowerCase().includes(companySearch.trim().toLocaleLowerCase())))
 
  if(selected?.id==='flights')return <FlightDesk isEnglish={isEnglish} onBack={()=>setActiveApp(null)}/>
+ if(selected?.id==='whatsapp')return <WhatsAppCenter isEnglish={isEnglish} onBack={()=>setActiveApp(null)}/>
  if(selected?.id==='customers')return <section className="panel" style={{minHeight:360,padding:32}}>
   <button type="button" className="secondary-btn" onClick={()=>{setActiveApp(null);setCustomerSection(null);setOpenedCompany(null)}}><ArrowLeft size={16}/> Back to Travel Operations</button>
   <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
