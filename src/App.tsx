@@ -345,6 +345,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [employees,setEmployees]=useState<EmployeeDisplay[]>([])
  const [employeesLoading,setEmployeesLoading]=useState(false)
  const [employeeFormOpen,setEmployeeFormOpen]=useState(false)
+ const [employeesSectionOpen,setEmployeesSectionOpen]=useState(false)
  const [editingEmployee,setEditingEmployee]=useState<EmployeeDisplay|null>(null)
  const [employeeDepartment,setEmployeeDepartment]=useState('')
  const [employeeBirth,setEmployeeBirth]=useState('')
@@ -498,7 +499,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   </div>
   {customerSection ? <div className="panel" style={{marginTop:28,padding:24,minHeight:180}}>
    {openedCompany ? <>
-    <button type="button" className="secondary-btn" onClick={()=>{setOpenedCompany(null);setEmployees([]);setEmployeeFormOpen(false);setEmployeeError('')}}><ArrowLeft size={15}/> رجوع إلى الشركات</button>
+    <button type="button" className="secondary-btn" onClick={()=>{setOpenedCompany(null);setEmployees([]);setEmployeeFormOpen(false);setEmployeesSectionOpen(false);setEmployeeError('')}}><ArrowLeft size={15}/> رجوع إلى الشركات</button>
     <div style={{display:'flex',alignItems:'center',gap:22,flexWrap:'wrap',marginTop:26,padding:'24px 8px',borderBottom:'1px solid var(--border)'}}>
      <div style={{width:112,height:112,borderRadius:18,background:'#fff',border:'1px solid var(--border)',display:'grid',placeItems:'center',padding:12,flexShrink:0}}>
       {openedCompany.logo_url?<img src={openedCompany.logo_url} alt={'شعار '+openedCompany.name} style={{width:'100%',height:'100%',objectFit:'contain'}}/>:<Building2 size={48} color="var(--muted)"/>}
@@ -506,9 +507,11 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
      <div style={{flex:1,minWidth:220}}><span className="eyebrow">COMPANY PROFILE</span><h2 style={{fontSize:26,margin:'8px 0'}}>{openedCompany.name}</h2><p style={{color:'var(--muted)',margin:0}}>رقم الشركة: {openedCompany.company_number} · {openedCompany.location}</p></div>
      <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(openedCompany)}><Settings2 size={16}/> تعديل بيانات الشركة</button>
     </div>
-    <button type="button" className="employee-section-card" onClick={()=>setEmployeeFormOpen(false)}>
+    <button type="button" className="employee-section-card" onClick={()=>setEmployeesSectionOpen(true)}>
      <div className="employee-section-icon"><Users size={28}/></div><div className="employee-section-copy"><span className="eyebrow">{isEnglish?'COMPANY DIRECTORY':'دليل الشركة'}</span><h3>{isEnglish?'Employees':'الموظفون'}</h3><p>{isEnglish?'Manage employee profiles, contact details and passport documents.':'إدارة الملفات الشخصية للموظفين وبيانات التواصل ووثائق جوازات السفر.'}</p></div><div className="employee-section-count">{employees.length}</div><span className="employee-section-open">{isEnglish?'Open section':'فتح القسم'} <ArrowLeft size={16}/></span>
     </button>
+    {employeesSectionOpen&&<div className="employee-section-content">
+     <div className="panel-head" style={{marginTop:24,alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h3 style={{fontSize:22}}>{isEnglish?'Employees':'الموظفون'}</h3><p style={{color:'var(--muted)',marginTop:6}}>{isEnglish?'Employee profiles registered under this company.':'الملفات الشخصية المسجلة ضمن هذه الشركة.'}</p></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button type="button" className="secondary-btn" onClick={()=>setEmployeesSectionOpen(false)}>{isEnglish?'Back':'رجوع'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(null)}><Plus size={16}/>{isEnglish?'Add employee':'إضافة موظف'}</button></div></div>
     {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
     {employeesLoading?<div className="loading-card" style={{marginTop:18}}>{isEnglish?'Loading employees...':'جارٍ تحميل الموظفين...'}</div>:employees.length?<div className="employee-directory-grid" style={{marginTop:18}}>
      {employees.map(employee=><article key={employee.id} className="employee-directory-card"><div className="employee-avatar">{employee.full_name.trim().charAt(0).toUpperCase()}</div><h3 className="employee-directory-name">{employee.full_name}</h3><div className="employee-directory-role">{employee.job_title||(isEnglish?'Job title not specified':'المسمى الوظيفي غير محدد')}</div><div className="employee-directory-meta">{employee.employee_number&&(isEnglish?'Employee no. ':'الرقم الوظيفي: ')+employee.employee_number}</div><div className="employee-directory-meta">{employee.department||''}</div><div className="employee-directory-actions"><button type="button" className="secondary-btn" onClick={()=>startEmployeeForm(employee)}><Settings2 size={15}/>{isEnglish?'Edit profile':'تعديل الملف'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(employee)}>{isEnglish?'Open profile':'فتح الملف'} <ArrowLeft size={15}/></button></div></article>)}
@@ -534,6 +537,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
      {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
      <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>{isEnglish?'Cancel':'إلغاء'}</button><button type="submit" className="primary-btn" disabled={employeeSaving}>{employeeSaving?(isEnglish?'Saving...':'جارٍ الحفظ...'):(editingEmployee?(isEnglish?'Save changes':'حفظ التعديلات'):(isEnglish?'Save employee':'حفظ الموظف'))}<Plus size={16}/></button></div>
     </form></div>}
+    </div>}
    </> : <>
     <button type="button" className="secondary-btn" onClick={()=>{setCustomerSection(null);setShowCompanyForm(false)}}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
     {customerSection==='companies' ? <>
