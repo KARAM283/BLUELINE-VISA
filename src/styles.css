@@ -472,3 +472,35 @@ td small{font-size:11px}
 .employee-passport-preview img{width:100%;height:100%;object-fit:contain}
 .employee-passport-preview iframe{width:100%;height:100%;border:0;background:white}
 @media(max-width:600px){.employee-section-card{gap:12px;padding:16px;flex-wrap:wrap}.employee-section-icon{width:48px;height:48px}.employee-section-count{margin-inline-start:auto}.employee-section-open{width:100%;justify-content:flex-end}.employee-form-grid{grid-template-columns:1fr}.employee-directory-actions{grid-template-columns:1fr}}
+
+
+/* Employee profile: passport preview on the left, details on the right */
+.employee-profile-modal{width:min(1100px,calc(100vw - 36px));max-height:92vh;overflow-y:auto}
+.employee-profile-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;align-items:start;margin-top:18px}
+.employee-passport-column{position:sticky;top:0;min-width:0}
+.employee-document-heading{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.employee-document-heading b,.employee-attachments-heading b{font-size:15px;color:var(--text)}
+.employee-document-heading span,.employee-attachments-heading span{font-size:12px;color:var(--muted);line-height:1.6}
+.employee-passport-preview-large{margin:0;width:100%;height:390px;background:#f2f5f9;border:1px solid var(--border);border-radius:14px;overflow:hidden;display:grid;place-items:center}
+.employee-passport-preview-large img{width:100%;height:100%;object-fit:contain}
+.employee-passport-preview-large iframe{width:100%;height:100%;border:0;background:#fff}
+.employee-document-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);font-size:12px;text-align:center;padding:18px}
+.employee-file-picker,.employee-attachment-add{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;margin-top:12px;padding:9px 12px;border:1px dashed #9aafcb;border-radius:10px;background:#f7f9fc;color:#315f99;font-size:12px;font-weight:600;cursor:pointer;text-align:center}
+.employee-file-picker input,.employee-attachment-add input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.employee-file-hint{display:block;margin-top:8px;color:var(--muted);font-size:11px;line-height:1.6}
+.employee-profile-fields{min-width:0}
+.employee-attachments-section{margin-top:22px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.employee-attachments-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.employee-attachments-heading>div{display:flex;flex-direction:column;gap:4px}
+.employee-attachment-add{flex:0 0 auto;margin:0;min-height:36px}
+.employee-attachments-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.employee-attachment-item{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.employee-attachment-item>svg{flex:0 0 auto;color:#54749e}
+.employee-attachment-info{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.employee-attachment-info b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.employee-attachment-info small{font-size:10px;color:var(--muted)}
+.employee-attachment-open{display:flex;align-items:center;gap:5px;white-space:nowrap;color:#315f99;font-size:11px;text-decoration:none}
+.employee-attachment-open:hover{text-decoration:underline}
+.employee-attachment-item.pending{border-style:dashed;background:#fafbfd}
+.employee-attachments-empty{margin-top:14px;padding:18px;border:1px dashed var(--border);border-radius:10px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:760px){.employee-profile-layout{grid-template-columns:1fr}.employee-passport-column{position:static;max-width:360px;width:100%;margin:0 auto}.employee-passport-preview-large{height:330px}.employee-profile-modal{width:calc(100vw - 20px)}}
