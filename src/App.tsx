@@ -597,7 +597,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
    const payload={full_name:employeeName.trim(),job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null,parent_customer_id:customerFamilyParentId}
    let id=editingIndividualCustomer?.id
    if(editingIndividualCustomer){const result=await client.from('individual_customers').update(payload).eq('id',editingIndividualCustomer.id);if(result.error)throw result.error}
-   else{const result=await client.from('individual_customers').insert({...payload,created_by:(await client.auth.getUser()).data.user?.id??null}).select('id').single();if(result.error)throw result.error;id=result.data.id}
+   else{const result=await client.from('individual_customers').insert({...payload,created_by:session?.user.id??null}).select('id').single();if(result.error)throw result.error;id=result.data.id}
    if(!id)throw new Error('Customer record was not created')
    let passportPath:string|null=null,photoPath:string|null=null
    const tasks:Promise<void>[]=[]
@@ -606,11 +606,15 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
    const attachments=newEmployeeAttachments.map(file=>({file,path:'individuals/'+id+'/attachments/'+crypto.randomUUID()+'.'+(file.name.split('.').pop()?.toLowerCase()||'bin')}))
    for(const item of attachments)tasks.push((async()=>{const r=await client.storage.from('employee-passports').upload(item.path,item.file,{contentType:item.file.type||'application/octet-stream',upsert:false});if(r.error)throw r.error;uploaded.push(item.path)})())
    const results=await Promise.allSettled(tasks);const failed=results.find(x=>x.status==='rejected');if(failed?.status==='rejected')throw failed.reason
-   const updates:Promise<void>[]=[]
-   if(passportPath)updates.push((async()=>{const r=await client.from('individual_customers').update({passport_path:passportPath}).eq('id',id);if(r.error)throw r.error})())
-   if(photoPath)updates.push((async()=>{const r=await client.from('individual_customers').update({profile_photo_path:photoPath}).eq('id',id);if(r.error)throw r.error})())
-   if(attachments.length)updates.push((async()=>{const r=await client.from('individual_customer_attachments').insert(attachments.map(x=>({customer_id:id,file_name:x.file.name,file_path:x.path,mime_type:x.file.type||null,file_size:x.file.size})));if(r.error)throw r.error})())
-   await Promise.all(updates)
+   const updates:Promise<unknown>[]=[]
+   const filePathUpdates:{passport_path?:string;profile_photo_path?:string}={}
+   if(passportPath)filePathUpdates.passport_path=passportPath
+   if(photoPath)filePathUpdates.profile_photo_path=photoPath
+   if(Object.keys(filePathUpdates).length)updates.push(client.from('individual_customers').update(filePathUpdates).eq('id',id))
+   if(attachments.length)updates.push(client.from('individual_customer_attachments').insert(attachments.map(x=>({customer_id:id,file_name:x.file.name,file_path:x.path,mime_type:x.file.type||null,file_size:x.file.size}))))
+   const updateResults=await Promise.all(updates)
+   const updateFailure=updateResults.find(result=>(result as {error?:unknown}).error)
+   if(updateFailure)throw (updateFailure as {error:Error}).error
    if(passportPath&&editingIndividualCustomer?.passport_path)void client.storage.from('employee-passports').remove([editingIndividualCustomer.passport_path])
    if(photoPath&&editingIndividualCustomer?.profile_photo_path)void client.storage.from('employee-passports').remove([editingIndividualCustomer.profile_photo_path])
    const [p,ph]=await Promise.all([passportPath?client.storage.from('employee-passports').createSignedUrl(passportPath,3600):Promise.resolve({data:null}),photoPath?client.storage.from('employee-passports').createSignedUrl(photoPath,3600):Promise.resolve({data:null})])
