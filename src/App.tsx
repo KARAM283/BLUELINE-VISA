@@ -325,6 +325,8 @@ type CompanyDisplay=CompanyRecord & {logo_url:string|null}
 type CompanyEmployee={id:string;company_id:string;full_name:string;employee_number:string|null;job_title:string|null;department:string|null;phone:string|null;email:string|null;date_of_birth:string|null;nationality:string|null;passport_number:string|null;passport_issue_date:string|null;passport_expiry_date:string|null;passport_path:string|null;profile_photo_path:string|null;created_at:string}
 type EmployeeDisplay=CompanyEmployee & {passport_url:string|null;profile_photo_url:string|null}
 type EmployeeAttachment={id:string;employee_id:string;file_name:string;file_path:string;mime_type:string|null;file_size:number|null;file_url:string|null;created_at:string}
+type IndividualCustomer={id:string;full_name:string;job_title:string|null;department:string|null;phone:string|null;date_of_birth:string|null;nationality:string|null;passport_number:string|null;passport_issue_date:string|null;passport_expiry_date:string|null;passport_path:string|null;profile_photo_path:string|null;parent_customer_id:string|null;source_employee_id:string|null;created_at:string}
+type IndividualCustomerDisplay=IndividualCustomer & {passport_url:string|null;profile_photo_url:string|null}
 
 function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [activeApp,setActiveApp]=useState<string|null>(null)
@@ -346,6 +348,14 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [employees,setEmployees]=useState<EmployeeDisplay[]>([])
  const [employeesLoading,setEmployeesLoading]=useState(false)
  const [employeeFormOpen,setEmployeeFormOpen]=useState(false)
+ const [individualCustomers,setIndividualCustomers]=useState<IndividualCustomerDisplay[]>([])
+ const [individualCustomersLoading,setIndividualCustomersLoading]=useState(false)
+ const [individualCustomerSearch,setIndividualCustomerSearch]=useState('')
+ const [selectedIndividualCustomer,setSelectedIndividualCustomer]=useState<IndividualCustomerDisplay|null>(null)
+ const [customerFormOpen,setCustomerFormOpen]=useState(false)
+ const [editingIndividualCustomer,setEditingIndividualCustomer]=useState<IndividualCustomerDisplay|null>(null)
+ const [customerFamilyParentId,setCustomerFamilyParentId]=useState<string|null>(null)
+ const [customerProfileBusy,setCustomerProfileBusy]=useState(false)
  const [employeesSectionOpen,setEmployeesSectionOpen]=useState(false)
  const [editingEmployee,setEditingEmployee]=useState<EmployeeDisplay|null>(null)
  const [employeeDepartment,setEmployeeDepartment]=useState('')
@@ -393,6 +403,8 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   if(customerSection==='companies')void loadCompanies()
  },[customerSection])
 
+ useEffect(()=>{const client=supabase;if(customerSection!=='individuals'||!client)return;let alive=true;const load=async()=>{setIndividualCustomersLoading(true);const {data,error}=await client.from('individual_customers').select('*').order('full_name');if(!alive)return;if(error){setEmployeeError(error.message);setIndividualCustomersLoading(false);return}const rows=(data??[]) as IndividualCustomer[];const signed=await Promise.all(rows.map(async row=>{const [passport,photo]=await Promise.all([row.passport_path?client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600):Promise.resolve({data:null}),row.profile_photo_path?client.storage.from('employee-passports').createSignedUrl(row.profile_photo_path,3600):Promise.resolve({data:null})]);return {...row,passport_url:passport.data?.signedUrl??null,profile_photo_url:photo.data?.signedUrl??null}}));if(alive)setIndividualCustomers(signed);setIndividualCustomersLoading(false)};void load();return()=>{alive=false}},[customerSection])
+
  useEffect(()=>{
   if(!companyLogo){setCompanyLogoPreview('');return}
   const url=URL.createObjectURL(companyLogo);setCompanyLogoPreview(url)
@@ -418,7 +430,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  useEffect(()=>{if(!employeePassport){setEmployeePassportPreview('');return}const url=URL.createObjectURL(employeePassport);setEmployeePassportPreview(url);return()=>URL.revokeObjectURL(url)},[employeePassport])
  useEffect(()=>{if(!employeeProfilePhoto){setEmployeeProfilePhotoPreview('');return}const url=URL.createObjectURL(employeeProfilePhoto);setEmployeeProfilePhotoPreview(url);return()=>URL.revokeObjectURL(url)},[employeeProfilePhoto])
 
- useEffect(()=>{const client=supabase;if(!employeeFormOpen||!editingEmployee||!client){setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const {data,error}=await client.from('company_employee_attachments').select('id,employee_id,file_name,file_path,mime_type,file_size,created_at').eq('employee_id',editingEmployee.id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id])
+ useEffect(()=>{const client=supabase;if((!employeeFormOpen||!editingEmployee)&&(!customerFormOpen||!editingIndividualCustomer)||!client){if(!employeeFormOpen&&!customerFormOpen)setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const isCustomer=customerFormOpen;const table=isCustomer?'individual_customer_attachments':'company_employee_attachments';const id=isCustomer?editingIndividualCustomer?.id:editingEmployee?.id;const key=isCustomer?'customer_id':'employee_id';const {data,error}=await client.from(table).select('*').eq(key,id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id,customerFormOpen,editingIndividualCustomer?.id])
 
  function startCompanyForm(company:CompanyDisplay|null){
   setEditingCompany(company)
