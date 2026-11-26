@@ -140,7 +140,7 @@ export default function App() {
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         {view==='overview' && <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>}
-        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='travel-operations' ? <TravelOperationsWorkspace/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>{isEnglish ? 'Cases distribution' : 'توزيع المعاملات'}</h2><p>{isEnglish ? 'Number of cases in each pipeline' : 'عدد الملفات داخل كل Pipeline'}</p></div><BriefcaseBusiness size={19}/></div>{pipelines.length ? pipelines.map((pipeline,i)=><div className="pipeline-summary-row" key={pipeline.id}><span className="pipeline-summary-dot" style={{background:pipelineColors[i % pipelineColors.length]}}/><span>{pipeline.name}</span><b>{cases.filter(c=>c.pipeline_id===pipeline.id).length}</b></div>) : <div className="pipeline-summary-note">أضف Pipeline حتى تظهر هنا.</div>}</div></section> : <PipelineBoard pipelines={pipelines} rows={filteredCases} query={query} onQueryChange={setQuery} canManage={role==='manager'||role==='admin'} onCreate={createPipeline} onMove={moveCaseToPipeline} onDelete={deletePipeline} onOpen={setSelectedCase} onAddCase={()=>setShowNew(true)}/>}
+        {view==='settings' ? <SettingsPanel/> : view==='documents' ? <DocumentsWorkspace cases={cases} userId={session.user.id}/> : view==='travel-operations' ? <TravelOperationsWorkspace isEnglish={isEnglish}/> : view==='overview' ? <section className="content-grid"><div className="panel"><div className="panel-head"><div><h2>آخر المعاملات</h2><p>أحدث الملفات التي تم إنشاؤها</p></div><button className="text-btn" onClick={()=>setView('cases')}>عرض الكل <ArrowLeft size={15}/></button></div><CaseTable rows={cases.slice(0,6)}/></div><div className="panel stages-panel"><div className="panel-head"><div><h2>{isEnglish ? 'Cases distribution' : 'توزيع المعاملات'}</h2><p>{isEnglish ? 'Number of cases in each pipeline' : 'عدد الملفات داخل كل Pipeline'}</p></div><BriefcaseBusiness size={19}/></div>{pipelines.length ? pipelines.map((pipeline,i)=><div className="pipeline-summary-row" key={pipeline.id}><span className="pipeline-summary-dot" style={{background:pipelineColors[i % pipelineColors.length]}}/><span>{pipeline.name}</span><b>{cases.filter(c=>c.pipeline_id===pipeline.id).length}</b></div>) : <div className="pipeline-summary-note">أضف Pipeline حتى تظهر هنا.</div>}</div></section> : <PipelineBoard pipelines={pipelines} rows={filteredCases} query={query} onQueryChange={setQuery} canManage={role==='manager'||role==='admin'} onCreate={createPipeline} onMove={moveCaseToPipeline} onDelete={deletePipeline} onOpen={setSelectedCase} onAddCase={()=>setShowNew(true)}/>}
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
@@ -322,9 +322,10 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 
 type CompanyRecord={id:string;name:string;company_number:string;location:string;logo_path:string|null;created_at:string}
 type CompanyDisplay=CompanyRecord & {logo_url:string|null}
-type CompanyEmployee={id:string;company_id:string;full_name:string;employee_number:string|null;job_title:string|null;phone:string|null;email:string|null;created_at:string}
+type CompanyEmployee={id:string;company_id:string;full_name:string;employee_number:string|null;job_title:string|null;department:string|null;phone:string|null;email:string|null;date_of_birth:string|null;nationality:string|null;passport_number:string|null;passport_issue_date:string|null;passport_expiry_date:string|null;passport_path:string|null;created_at:string}
+type EmployeeDisplay=CompanyEmployee & {passport_url:string|null}
 
-function TravelOperationsWorkspace(){
+function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [activeApp,setActiveApp]=useState<string|null>(null)
  const [customerSection,setCustomerSection]=useState<'companies'|'individuals'|null>(null)
  const [companies,setCompanies]=useState<CompanyDisplay[]>([])
@@ -341,9 +342,18 @@ function TravelOperationsWorkspace(){
  const [companySaving,setCompanySaving]=useState(false)
  const [companyError,setCompanyError]=useState('')
  const [companyNotice,setCompanyNotice]=useState('')
- const [employees,setEmployees]=useState<CompanyEmployee[]>([])
+ const [employees,setEmployees]=useState<EmployeeDisplay[]>([])
  const [employeesLoading,setEmployeesLoading]=useState(false)
  const [employeeFormOpen,setEmployeeFormOpen]=useState(false)
+ const [editingEmployee,setEditingEmployee]=useState<EmployeeDisplay|null>(null)
+ const [employeeDepartment,setEmployeeDepartment]=useState('')
+ const [employeeBirth,setEmployeeBirth]=useState('')
+ const [employeeNationality,setEmployeeNationality]=useState('')
+ const [employeePassportNumber,setEmployeePassportNumber]=useState('')
+ const [employeePassportIssue,setEmployeePassportIssue]=useState('')
+ const [employeePassportExpiry,setEmployeePassportExpiry]=useState('')
+ const [employeePassport,setEmployeePassport]=useState<File|null>(null)
+ const [employeePassportPreview,setEmployeePassportPreview]=useState('')
  const [employeeSaving,setEmployeeSaving]=useState(false)
  const [employeeError,setEmployeeError]=useState('')
  const [employeeName,setEmployeeName]=useState('')
@@ -389,15 +399,17 @@ function TravelOperationsWorkspace(){
   let alive=true
   const load=async()=>{
    setEmployeesLoading(true);setEmployeeError('')
-   const {data,error}=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,phone,email,created_at').eq('company_id',openedCompany.id).order('full_name')
+   const {data,error}=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,created_at').eq('company_id',openedCompany.id).order('full_name')
    if(!alive)return
    if(error)setEmployeeError(error.message)
-   else setEmployees((data??[]) as CompanyEmployee[])
+   else {const rows=(data??[]) as CompanyEmployee[];const withPassports=await Promise.all(rows.map(async row=>{if(!row.passport_path)return {...row,passport_url:null};const signed=await client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600);return {...row,passport_url:signed.data?.signedUrl??null}}));if(alive)setEmployees(withPassports)}
    setEmployeesLoading(false)
   }
   void load()
   return()=>{alive=false}
  },[openedCompany?.id])
+
+ useEffect(()=>{if(!employeePassport){setEmployeePassportPreview('');return}const url=URL.createObjectURL(employeePassport);setEmployeePassportPreview(url);return()=>URL.revokeObjectURL(url)},[employeePassport])
 
  function startCompanyForm(company:CompanyDisplay|null){
   setEditingCompany(company)
@@ -452,35 +464,27 @@ function TravelOperationsWorkspace(){
   }finally{setCompanySaving(false)}
  }
 
+ function startEmployeeForm(employee:EmployeeDisplay|null){setEditingEmployee(employee);setEmployeeName(employee?.full_name??'');setEmployeeNumber(employee?.employee_number??'');setEmployeeTitle(employee?.job_title??'');setEmployeeDepartment(employee?.department??'');setEmployeePhone(employee?.phone??'');setEmployeeEmail(employee?.email??'');setEmployeeBirth(employee?.date_of_birth??'');setEmployeeNationality(employee?.nationality??'');setEmployeePassportNumber(employee?.passport_number??'');setEmployeePassportIssue(employee?.passport_issue_date??'');setEmployeePassportExpiry(employee?.passport_expiry_date??'');setEmployeePassport(null);setEmployeeError('');setEmployeeFormOpen(true)}
  async function addEmployee(e:FormEvent){
-  e.preventDefault()
-  const client=supabase
-  if(!client||!openedCompany||employeeSaving)return
-  setEmployeeSaving(true);setEmployeeError('')
+  e.preventDefault();const client=supabase;if(!client||!openedCompany||employeeSaving)return
+  setEmployeeSaving(true);setEmployeeError('');let uploadedPath:string|null=null
   try{
-   const result=await client.from('company_employees').insert({
-    company_id:openedCompany.id,
-    full_name:employeeName.trim(),
-    employee_number:employeeNumber.trim()||null,
-    job_title:employeeTitle.trim()||null,
-    phone:employeePhone.trim()||null,
-    email:employeeEmail.trim()||null
-   })
-   if(result.error)throw result.error
-   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,phone,email,created_at').eq('company_id',openedCompany.id).order('full_name')
-   if(refreshed.error)throw refreshed.error
-   setEmployees((refreshed.data??[]) as CompanyEmployee[])
-   setEmployeeName('');setEmployeeNumber('');setEmployeeTitle('');setEmployeePhone('');setEmployeeEmail('')
-   setEmployeeFormOpen(false)
-  }catch(err){setEmployeeError(err instanceof Error?err.message:'تعذر إضافة الموظف')}
-  finally{setEmployeeSaving(false)}
+   const payload={full_name:employeeName.trim(),employee_number:employeeNumber.trim()||null,job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,email:employeeEmail.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null}
+   let employeeId=editingEmployee?.id
+   if(editingEmployee){const updated=await client.from('company_employees').update(payload).eq('id',editingEmployee.id);if(updated.error)throw updated.error}
+   else{const created=await client.from('company_employees').insert({...payload,company_id:openedCompany.id}).select('id').single();if(created.error)throw created.error;employeeId=created.data.id}
+   if(employeePassport&&employeeId){const ext=employeePassport.name.split('.').pop()?.toLowerCase()||(employeePassport.type==='application/pdf'?'pdf':'jpg');uploadedPath=openedCompany.id+'/'+employeeId+'/'+crypto.randomUUID()+'.'+ext;const uploaded=await client.storage.from('employee-passports').upload(uploadedPath,employeePassport,{contentType:employeePassport.type,upsert:false});if(uploaded.error)throw uploaded.error;const saved=await client.from('company_employees').update({passport_path:uploadedPath}).eq('id',employeeId);if(saved.error)throw saved.error;if(editingEmployee?.passport_path)await client.storage.from('employee-passports').remove([editingEmployee.passport_path])}
+   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,created_at').eq('company_id',openedCompany.id).order('full_name');if(refreshed.error)throw refreshed.error
+   const rows=(refreshed.data??[]) as CompanyEmployee[];const withPassports=await Promise.all(rows.map(async row=>{if(!row.passport_path)return {...row,passport_url:null};const signed=await client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600);return {...row,passport_url:signed.data?.signedUrl??null}}))
+   setEmployees(withPassports);setEmployeeFormOpen(false);setEditingEmployee(null);setEmployeePassport(null)
+  }catch(err){if(uploadedPath)await client.storage.from('employee-passports').remove([uploadedPath]);setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not save employee':'تعذر حفظ بيانات الموظف'))}finally{setEmployeeSaving(false)}
  }
-
  async function deleteEmployee(employee:CompanyEmployee){
   const client=supabase
-  if(!client||!window.confirm('تأكيد حذف الموظف '+employee.full_name+'؟'))return
+  if(!client||!window.confirm(isEnglish?'Delete employee '+employee.full_name+'?':'تأكيد حذف الموظف '+employee.full_name+'؟'))return
   const result=await client.from('company_employees').delete().eq('id',employee.id)
   if(result.error){setEmployeeError(result.error.message);return}
+  if(employee.passport_path)await client.storage.from('employee-passports').remove([employee.passport_path])
   setEmployees(current=>current.filter(item=>item.id!==employee.id))
  }
 
@@ -502,29 +506,33 @@ function TravelOperationsWorkspace(){
      <div style={{flex:1,minWidth:220}}><span className="eyebrow">COMPANY PROFILE</span><h2 style={{fontSize:26,margin:'8px 0'}}>{openedCompany.name}</h2><p style={{color:'var(--muted)',margin:0}}>رقم الشركة: {openedCompany.company_number} · {openedCompany.location}</p></div>
      <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(openedCompany)}><Settings2 size={16}/> تعديل بيانات الشركة</button>
     </div>
-    <div className="panel-head" style={{marginTop:26,alignItems:'center',gap:12,flexWrap:'wrap'}}>
-     <div><h3 style={{fontSize:22}}>موظفو الشركة</h3><p style={{color:'var(--muted)',marginTop:6}}>إضافة وإدارة بيانات الموظفين التابعين لهذه الشركة.</p></div>
-     <button type="button" className="primary-btn" onClick={()=>{setEmployeeError('');setEmployeeFormOpen(true)}}><Plus size={17}/> إضافة موظف</button>
-    </div>
+    <button type="button" className="employee-section-card" onClick={()=>setEmployeeFormOpen(false)}>
+     <div className="employee-section-icon"><Users size={28}/></div><div className="employee-section-copy"><span className="eyebrow">{isEnglish?'COMPANY DIRECTORY':'دليل الشركة'}</span><h3>{isEnglish?'Employees':'الموظفون'}</h3><p>{isEnglish?'Manage employee profiles, contact details and passport documents.':'إدارة الملفات الشخصية للموظفين وبيانات التواصل ووثائق جوازات السفر.'}</p></div><div className="employee-section-count">{employees.length}</div><span className="employee-section-open">{isEnglish?'Open section':'فتح القسم'} <ArrowLeft size={16}/></span>
+    </button>
     {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
-    {employeesLoading?<div className="loading-card" style={{marginTop:18}}>جارٍ تحميل الموظفين...</div>:
-     employees.length?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:14,marginTop:18}}>
-      {employees.map(employee=><article key={employee.id} className="panel" style={{padding:18,display:'flex',flexDirection:'column',gap:8}}>
-       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}><div style={{minWidth:0}}><b style={{fontSize:16,display:'block',overflowWrap:'anywhere'}}>{employee.full_name}</b><span style={{color:'var(--muted)',fontSize:12}}>{employee.job_title||'المسمى الوظيفي غير محدد'}</span></div><button type="button" className="icon-btn" title="حذف الموظف" onClick={()=>void deleteEmployee(employee)}><Trash2 size={15}/></button></div>
-       {employee.employee_number&&<small style={{color:'var(--muted)'}}>الرقم الوظيفي: {employee.employee_number}</small>}
-       {employee.phone&&<small style={{color:'var(--muted)'}}>الهاتف: {employee.phone}</small>}
-       {employee.email&&<small style={{color:'var(--muted)'}}>البريد: {employee.email}</small>}
-      </article>)}
-     </div>:<div className="empty-state" style={{marginTop:18,padding:28}}><Users size={28}/><b>لا يوجد موظفون مسجلون</b><span>أضف أول موظف حتى تبدأ بإدارة فريق هذه الشركة.</span></div>}
-    {employeeFormOpen&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!employeeSaving)setEmployeeFormOpen(false)}}><form className="modal-card" onSubmit={addEmployee} style={{maxWidth:560}}>
-     <div className="modal-head"><div><span className="eyebrow">COMPANY EMPLOYEES</span><h2>إضافة موظف</h2><p>سيتم ربط الموظف تلقائياً بشركة {openedCompany.name}.</p></div><button type="button" className="icon-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}><X/></button></div>
-     <label>اسم الموظف<input value={employeeName} onChange={e=>setEmployeeName(e.target.value)} required maxLength={160} placeholder="الاسم الكامل"/></label>
-     <label style={{marginTop:14}}>الرقم الوظيفي<input value={employeeNumber} onChange={e=>setEmployeeNumber(e.target.value)} maxLength={80} placeholder="اختياري"/></label>
-     <label style={{marginTop:14}}>المسمى الوظيفي<input value={employeeTitle} onChange={e=>setEmployeeTitle(e.target.value)} maxLength={120} placeholder="مثلاً: مدير مبيعات"/></label>
-     <label style={{marginTop:14}}>رقم الهاتف<input value={employeePhone} onChange={e=>setEmployeePhone(e.target.value)} maxLength={50} placeholder="رقم التواصل"/></label>
-     <label style={{marginTop:14}}>البريد الإلكتروني<input type="email" value={employeeEmail} onChange={e=>setEmployeeEmail(e.target.value)} maxLength={160} placeholder="name@example.com"/></label>
+    {employeesLoading?<div className="loading-card" style={{marginTop:18}}>{isEnglish?'Loading employees...':'جارٍ تحميل الموظفين...'}</div>:employees.length?<div className="employee-directory-grid" style={{marginTop:18}}>
+     {employees.map(employee=><article key={employee.id} className="employee-directory-card"><div className="employee-avatar">{employee.full_name.trim().charAt(0).toUpperCase()}</div><h3 className="employee-directory-name">{employee.full_name}</h3><div className="employee-directory-role">{employee.job_title||(isEnglish?'Job title not specified':'المسمى الوظيفي غير محدد')}</div><div className="employee-directory-meta">{employee.employee_number&&(isEnglish?'Employee no. ':'الرقم الوظيفي: ')+employee.employee_number}</div><div className="employee-directory-meta">{employee.department||''}</div><div className="employee-directory-actions"><button type="button" className="secondary-btn" onClick={()=>startEmployeeForm(employee)}><Settings2 size={15}/>{isEnglish?'Edit profile':'تعديل الملف'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(employee)}>{isEnglish?'Open profile':'فتح الملف'} <ArrowLeft size={15}/></button></div></article>)}
+    </div>:<div className="empty-state" style={{marginTop:18,padding:28}}><Users size={28}/><b>{isEnglish?'No employees registered':'لا يوجد موظفون مسجلون'}</b><span>{isEnglish?'Open the Employees section to add the first employee.':'ادخل إلى قسم الموظفين لإضافة أول موظف.'}</span></div>}
+    {employeeFormOpen&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!employeeSaving)setEmployeeFormOpen(false)}}><form className="modal-card employee-profile-modal" onSubmit={addEmployee} style={{maxWidth:680}}>
+     <div className="modal-head"><div><span className="eyebrow">{isEnglish?'EMPLOYEE PROFILE':'الملف الشخصي للموظف'}</span><h2>{editingEmployee?(isEnglish?'Edit employee':'تعديل بيانات الموظف'):(isEnglish?'Add employee':'إضافة موظف')}</h2><p>{isEnglish?'Employee record for ':'ملف الموظف التابع لشركة '}{openedCompany.name}</p></div><button type="button" className="icon-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}><X/></button></div>
+     <div className="employee-form-grid">
+      <label>{isEnglish?'Full name':'الاسم الكامل'}<input dir="auto" value={employeeName} onChange={e=>setEmployeeName(e.target.value)} required maxLength={160}/></label>
+      <label>{isEnglish?'Employee number':'الرقم الوظيفي'}<input dir="ltr" value={employeeNumber} onChange={e=>setEmployeeNumber(e.target.value)} maxLength={80}/></label>
+      <label>{isEnglish?'Job title':'المسمى الوظيفي'}<input dir="auto" value={employeeTitle} onChange={e=>setEmployeeTitle(e.target.value)} maxLength={120}/></label>
+      <label>{isEnglish?'Department':'القسم'}<input dir="auto" value={employeeDepartment} onChange={e=>setEmployeeDepartment(e.target.value)} maxLength={120}/></label>
+      <label>{isEnglish?'Phone number':'رقم الهاتف'}<input dir="ltr" value={employeePhone} onChange={e=>setEmployeePhone(e.target.value)} maxLength={50}/></label>
+      <label>{isEnglish?'Email address':'البريد الإلكتروني'}<input dir="ltr" type="email" value={employeeEmail} onChange={e=>setEmployeeEmail(e.target.value)} maxLength={160}/></label>
+      <label>{isEnglish?'Date of birth':'تاريخ الميلاد'}<input dir="ltr" type="date" value={employeeBirth} onChange={e=>setEmployeeBirth(e.target.value)}/></label>
+      <label>{isEnglish?'Nationality':'الجنسية'}<input dir="auto" value={employeeNationality} onChange={e=>setEmployeeNationality(e.target.value)} maxLength={100}/></label>
+      <label>{isEnglish?'Passport number':'رقم جواز السفر'}<input dir="ltr" value={employeePassportNumber} onChange={e=>setEmployeePassportNumber(e.target.value)} maxLength={80}/></label>
+      <label>{isEnglish?'Passport issue date':'تاريخ إصدار الجواز'}<input dir="ltr" type="date" value={employeePassportIssue} onChange={e=>setEmployeePassportIssue(e.target.value)}/></label>
+      <label>{isEnglish?'Passport expiry date':'تاريخ انتهاء الجواز'}<input dir="ltr" type="date" value={employeePassportExpiry} onChange={e=>setEmployeePassportExpiry(e.target.value)}/></label>
+     </div>
+     <div className="employee-passport-upload"><label>{isEnglish?'Passport document':'وثيقة جواز السفر'} <span>{isEnglish?'PDF, JPG, PNG or WEBP · Max 10 MB':'PDF أو JPG أو PNG أو WEBP · الحد الأقصى 10 MB'}</span></label><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>{const file=e.target.files?.[0]??null;if(file&&file.size>10*1024*1024){setEmployeeError(isEnglish?'File must not exceed 10 MB':'يجب ألا يتجاوز حجم الملف 10 MB');e.currentTarget.value='';return}setEmployeeError('');setEmployeePassport(file)}} disabled={employeeSaving}/>
+      {(employeePassportPreview||(!employeePassport&&editingEmployee?.passport_url))&&<div className="employee-passport-preview">{(employeePassport?.type==='application/pdf'||(!employeePassport&&editingEmployee?.passport_url?.toLowerCase().includes('.pdf')))?<iframe title={isEnglish?'Passport preview':'معاينة جواز السفر'} src={employeePassportPreview||editingEmployee?.passport_url||''}/>:<img src={employeePassportPreview||editingEmployee?.passport_url||''} alt={isEnglish?'Passport preview':'معاينة جواز السفر'}/>}</div>}
+     </div>
      {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
-     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>إلغاء</button><button type="submit" className="primary-btn" disabled={employeeSaving}>{employeeSaving?'جارٍ الحفظ...':'حفظ الموظف'}<Plus size={16}/></button></div>
+     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>{isEnglish?'Cancel':'إلغاء'}</button><button type="submit" className="primary-btn" disabled={employeeSaving}>{employeeSaving?(isEnglish?'Saving...':'جارٍ الحفظ...'):(editingEmployee?(isEnglish?'Save changes':'حفظ التعديلات'):(isEnglish?'Save employee':'حفظ الموظف'))}<Plus size={16}/></button></div>
     </form></div>}
    </> : <>
     <button type="button" className="secondary-btn" onClick={()=>{setCustomerSection(null);setShowCompanyForm(false)}}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
