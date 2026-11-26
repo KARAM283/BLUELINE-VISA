@@ -320,15 +320,94 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 }
 
 
+type CompanyRecord={id:string;name:string;company_number:string;location:string;logo_path:string|null;created_at:string}
+type CompanyDisplay=CompanyRecord & {logo_url:string|null}
+
 function TravelOperationsWorkspace(){
  const [activeApp,setActiveApp]=useState<string|null>(null)
  const [customerSection,setCustomerSection]=useState<'companies'|'individuals'|null>(null)
+ const [companies,setCompanies]=useState<CompanyDisplay[]>([])
+ const [companySearch,setCompanySearch]=useState('')
+ const [showCompanyForm,setShowCompanyForm]=useState(false)
+ const [companyName,setCompanyName]=useState('')
+ const [companyNumber,setCompanyNumber]=useState('')
+ const [companyLocation,setCompanyLocation]=useState('')
+ const [companyLogo,setCompanyLogo]=useState<File|null>(null)
+ const [companyLogoPreview,setCompanyLogoPreview]=useState('')
+ const [companiesLoading,setCompaniesLoading]=useState(false)
+ const [companySaving,setCompanySaving]=useState(false)
+ const [companyError,setCompanyError]=useState('')
+ const [companyNotice,setCompanyNotice]=useState('')
  const apps=[
   {id:'customers',title:'Customers - Organization',description:'إدارة العملاء والشركات والمؤسسات وبيانات التواصل.',icon:<Building2 size={27}/>,code:'CUSTOMERS / ORGANIZATION'},
   {id:'flights',title:'Flights',description:'مساحة إدارة الرحلات ومعلومات الطيران والحجوزات.',icon:<Plane size={27}/>,code:'FLIGHT OPERATIONS'},
   {id:'whatsapp',title:'WhatsApp',description:'مساحة متابعة محادثات واتساب والتواصل مع العملاء.',icon:<MessageCircle size={27}/>,code:'CUSTOMER COMMUNICATION'}
  ]
  const selected=apps.find(app=>app.id===activeApp)
+
+ useEffect(()=>{
+  if(!customerSection||customerSection!=='companies'||!supabase)return
+  let alive=true
+  const load=async()=>{
+   setCompaniesLoading(true);setCompanyError('')
+   const {data,error}=await supabase.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
+   if(!alive)return
+   if(error){setCompanyError(error.message);setCompaniesLoading(false);return}
+   const rows=(data??[]) as CompanyRecord[]
+   const withLogos=await Promise.all(rows.map(async company=>{
+    if(!company.logo_path)return {...company,logo_url:null}
+    const signed=await supabase!.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
+    return {...company,logo_url:signed.data?.signedUrl??null}
+   }))
+   if(alive)setCompanies(withLogos)
+   setCompaniesLoading(false)
+  }
+  void load()
+  return()=>{alive=false}
+ },[customerSection])
+
+ useEffect(()=>{
+  if(!companyLogo){setCompanyLogoPreview('');return}
+  const url=URL.createObjectURL(companyLogo);setCompanyLogoPreview(url)
+  return()=>URL.revokeObjectURL(url)
+ },[companyLogo])
+
+ async function saveCompany(e:FormEvent){
+  e.preventDefault()
+  if(!supabase||companySaving)return
+  setCompanySaving(true);setCompanyError('');setCompanyNotice('')
+  let createdId:string|null=null
+  let uploadedPath:string|null=null
+  try{
+   const created=await supabase.from('companies').insert({name:companyName.trim(),company_number:companyNumber.trim(),location:companyLocation.trim()}).select('id').single()
+   if(created.error)throw created.error
+   createdId=created.data.id
+   if(companyLogo){
+    const ext=companyLogo.name.split('.').pop()?.toLowerCase()||'png'
+    uploadedPath=createdId+'/'+crypto.randomUUID()+'.'+ext
+    const uploaded=await supabase.storage.from('company-logos').upload(uploadedPath,companyLogo,{contentType:companyLogo.type,upsert:false})
+    if(uploaded.error)throw uploaded.error
+    const updated=await supabase.from('companies').update({logo_path:uploadedPath}).eq('id',createdId)
+    if(updated.error)throw updated.error
+   }
+   setCompanyName('');setCompanyNumber('');setCompanyLocation('');setCompanyLogo(null);setShowCompanyForm(false)
+   const refreshed=await supabase.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
+   if(refreshed.error)throw refreshed.error
+   const rows=(refreshed.data??[]) as CompanyRecord[]
+   const withLogos=await Promise.all(rows.map(async company=>{
+    if(!company.logo_path)return {...company,logo_url:null}
+    const signed=await supabase!.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
+    return {...company,logo_url:signed.data?.signedUrl??null}
+   }))
+   setCompanies(withLogos);setCompanyNotice('تمت إضافة الشركة بنجاح.')
+  }catch(err){
+   if(createdId)await supabase.from('companies').delete().eq('id',createdId)
+   if(uploadedPath)await supabase.storage.from('company-logos').remove([uploadedPath])
+   setCompanyError(err instanceof Error?err.message:'تعذر إضافة الشركة')
+  }finally{setCompanySaving(false)}
+ }
+
+ const filteredCompanies=companies.filter(company=>[company.name,company.company_number,company.location].some(value=>value.toLocaleLowerCase().includes(companySearch.trim().toLocaleLowerCase())))
  if(selected?.id==='customers')return <section className="panel" style={{minHeight:360,padding:32}}>
   <button type="button" className="secondary-btn" onClick={()=>{setActiveApp(null);setCustomerSection(null)}}><ArrowLeft size={16}/> Back to Travel Operations</button>
   <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
@@ -336,10 +415,41 @@ function TravelOperationsWorkspace(){
    <div className="metric-icon tone-blue"><Building2 size={27}/></div>
   </div>
   {customerSection ? <div className="panel" style={{marginTop:28,padding:24,minHeight:180}}>
-   <button type="button" className="secondary-btn" onClick={()=>setCustomerSection(null)}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
-   <h3 style={{fontSize:22,marginTop:22}}>{customerSection==='companies'?'الشركات':'العملاء خارج الشركات'}</h3>
-   <p style={{color:'var(--muted)',marginTop:8}}>{customerSection==='companies'?'قسم إدارة الشركات والمؤسسات.':'قسم إدارة العملاء الأفراد غير المرتبطين بشركات.'}</p>
-   <div className="empty-state" style={{marginTop:24,padding:24}}><Users size={26}/><b>{customerSection==='companies'?'الشركات':'العملاء خارج الشركات'}</b><span>تم فتح القسم. يمكن إضافة سجلّات وبيانات العملاء في الخطوة التالية.</span></div>
+   <button type="button" className="secondary-btn" onClick={()=>{setCustomerSection(null);setShowCompanyForm(false)}}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
+   {customerSection==='companies' ? <>
+    <div className="panel-head" style={{marginTop:24,alignItems:'center',gap:16,flexWrap:'wrap'}}>
+     <div><h3 style={{fontSize:24}}>الشركات</h3><p style={{color:'var(--muted)',marginTop:6}}>دليل الشركات والمؤسسات المسجلة.</p></div>
+     <button type="button" className="primary-btn" onClick={()=>{setShowCompanyForm(true);setCompanyError('')}}><Plus size={17}/> إضافة شركة</button>
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:10,marginTop:22,padding:'0 14px',border:'1px solid var(--border)',borderRadius:12,background:'var(--surface)',minHeight:48}}>
+     <Search size={18} color="var(--muted)"/><input aria-label="بحث عن شركة" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} placeholder="ابحث باسم الشركة أو رقمها أو موقعها..." style={{border:0,outline:0,background:'transparent',width:'100%',color:'var(--text)',padding:'12px 0'}}/>
+    </div>
+    {companyNotice&&<div className="success-line" style={{marginTop:14}}>{companyNotice}</div>}
+    {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
+    {companiesLoading?<div className="loading-card" style={{marginTop:20}}>جارٍ تحميل الشركات...</div>:
+     filteredCompanies.length?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:16,marginTop:20}}>
+      {filteredCompanies.map(company=><article className="panel" key={company.id} style={{padding:20,display:'flex',flexDirection:'column',gap:12}}>
+       <div style={{display:'flex',alignItems:'center',gap:12}}>
+        {company.logo_url?<img src={company.logo_url} alt={'شعار '+company.name} style={{width:58,height:58,objectFit:'contain',borderRadius:12,border:'1px solid var(--border)',background:'#fff',padding:5}}/>:<div className="metric-icon tone-blue"><Building2 size={25}/></div>}
+        <div style={{minWidth:0}}><b style={{display:'block',fontSize:17,overflowWrap:'anywhere'}}>{company.name}</b><small style={{color:'var(--muted)'}}>رقم الشركة: {company.company_number}</small></div>
+       </div>
+       <div style={{display:'flex',alignItems:'flex-start',gap:8,color:'var(--muted)',fontSize:13}}><MapPin size={16}/><span>{company.location}</span></div>
+      </article>)}
+     </div>:<div className="empty-state" style={{marginTop:20,padding:28}}><Building2 size={28}/><b>{companySearch?'لا توجد نتائج مطابقة':'لا توجد شركات مسجلة بعد'}</b><span>{companySearch?'جرّب البحث باسم أو رقم أو موقع مختلف.':'اضغط على إضافة شركة حتى تسجل أول شركة في الدليل.'}</span></div>}
+    {showCompanyForm&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!companySaving)setShowCompanyForm(false)}}><form className="modal-card" onSubmit={saveCompany} style={{maxWidth:560}}>
+     <div className="modal-head"><div><span className="eyebrow">COMPANY DIRECTORY</span><h2>إضافة شركة</h2><p>أدخل بيانات الشركة وارفع شعارها إن توفر.</p></div><button type="button" className="icon-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}><X/></button></div>
+     <label>اسم الشركة<input value={companyName} onChange={e=>setCompanyName(e.target.value)} required maxLength={160} placeholder="اسم الشركة"/></label>
+     <label style={{marginTop:14}}>رقم الشركة<input value={companyNumber} onChange={e=>setCompanyNumber(e.target.value)} required maxLength={80} placeholder="رقم الشركة"/></label>
+     <label style={{marginTop:14}}>موقع الشركة<input value={companyLocation} onChange={e=>setCompanyLocation(e.target.value)} required maxLength={240} placeholder="المدينة أو العنوان"/></label>
+     <div style={{marginTop:16}}><label>لوكو الشركة <span style={{color:'var(--muted)',fontWeight:400}}>PNG / JPG / WEBP / SVG · حتى 5 MB</span></label><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>{const file=e.target.files?.[0]??null;if(file&&file.size>5*1024*1024){setCompanyError('حجم الشعار يجب ألا يتجاوز 5 MB.');e.currentTarget.value='';return}setCompanyError('');setCompanyLogo(file)}} disabled={companySaving}/>{companyLogoPreview&&<img src={companyLogoPreview} alt="معاينة شعار الشركة" style={{display:'block',width:100,height:100,objectFit:'contain',marginTop:12,border:'1px solid var(--border)',borderRadius:12,padding:8}}/>}</div>
+     {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
+     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}>إلغاء</button><button type="submit" className="primary-btn" disabled={companySaving}>{companySaving?'جارٍ الحفظ...':'حفظ الشركة'}<Plus size={16}/></button></div>
+    </form></div>}
+   </> : <>
+    <h3 style={{fontSize:22,marginTop:22}}>العملاء خارج الشركات</h3>
+    <p style={{color:'var(--muted)',marginTop:8}}>قسم إدارة العملاء الأفراد غير المرتبطين بشركات.</p>
+    <div className="empty-state" style={{marginTop:24,padding:24}}><Users size={26}/><b>العملاء خارج الشركات</b><span>تم فتح القسم. يمكن إضافة سجلّات وبيانات العملاء في الخطوة التالية.</span></div>
+   </>}
   </div> : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:18,marginTop:30}}>
    <button type="button" className="panel" onClick={()=>setCustomerSection('companies')} style={{textAlign:'start',padding:26,cursor:'pointer',minHeight:170,display:'flex',flexDirection:'column',alignItems:'flex-start',gap:14}}>
     <div className="metric-icon tone-blue"><Building2 size={27}/></div><b style={{fontSize:20}}>الشركات</b><span style={{color:'var(--muted)',fontSize:13}}>إدارة الشركات والمؤسسات.</span><span className="text-btn" style={{marginTop:'auto'}}>فتح القسم <ArrowLeft size={14}/></span>
