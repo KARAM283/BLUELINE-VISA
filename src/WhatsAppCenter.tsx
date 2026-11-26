@@ -110,6 +110,15 @@ export default function WhatsAppCenter({isEnglish,onBack}:{isEnglish:boolean;onB
   }catch(err){setError(err instanceof Error?err.message:'Campaign could not be saved')}
   finally{setBusy(false)}
  }
+ async function startCampaign(campaign:Campaign){
+  if(!supabase||busy)return
+  if(!window.confirm(tr('سيتم إرسال قالب WhatsApp إلى جهات الاتصال المؤهلة لهذه الحملة. هل تريد المتابعة؟','This will send the WhatsApp template to eligible recipients. Continue?')))return
+  setBusy(true);setError('');setNotice('')
+  const {data,error}=await supabase.functions.invoke('whatsapp-cloud',{body:{action:'send_campaign',campaign_id:campaign.id}})
+  if(error||data?.error)setError(data?.error||error?.message||'Campaign send failed')
+  else setNotice(tr('انتهت دفعة الإرسال: '+data.sent+' أُرسلت، '+data.failed+' فشلت، '+data.remaining+' متبقية.','Batch finished: '+data.sent+' sent, '+data.failed+' failed, '+data.remaining+' remaining.'))
+  await load();setBusy(false)
+ }
  const totalInbound=messages.filter(m=>m.direction==='inbound').length
  const totalOutbound=messages.filter(m=>m.direction==='outbound').length
  const delivered=messages.filter(m=>m.status==='delivered'||m.status==='read').length
@@ -144,7 +153,7 @@ export default function WhatsAppCenter({isEnglish,onBack}:{isEnglish:boolean;onB
   </div>}
   {tab==='campaigns'&&<div className="wa-section"><div className="wa-section-head"><div><h2>{tr('إدارة الحملات','Campaign Manager')}</h2><p>{tr('أنشئ حملات WhatsApp باستخدام قوالب Meta المعتمدة وحدد جمهورك.','Build WhatsApp campaigns with approved Meta templates and a targeted audience.')}</p></div><button className="primary-btn" onClick={()=>setCampaignOpen(true)}><Plus size={16}/>{tr('حملة جديدة','New campaign')}</button></div>
    <div className="wa-kpis"><div><small>{tr('إجمالي الحملات','Total campaigns')}</small><b>{campaigns.length}</b></div><div><small>{tr('جهات الاتصال','Contacts')}</small><b>{contacts.length}</b></div><div><small>{tr('موافقات الإرسال','Opted-in contacts')}</small><b>{contacts.filter(c=>c.consent_status==='opted_in').length}</b></div><div><small>{tr('المجدولة','Scheduled')}</small><b>{campaigns.filter(c=>c.status==='scheduled').length}</b></div></div>
-   <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>{tr('اسم الحملة','Campaign')}</th><th>Template</th><th>{tr('اللغة','Language')}</th><th>{tr('الحالة','Status')}</th><th>{tr('موعد الإرسال','Schedule')}</th><th>{tr('تاريخ الإنشاء','Created')}</th></tr></thead><tbody>{campaigns.map(c=><tr key={c.id}><td><b>{c.name}</b></td><td>{c.template_name}</td><td>{c.template_language}</td><td><span className={'wa-campaign-state '+c.status}>{campaignStatus(c.status)}</span></td><td>{fmt(c.scheduled_at)}</td><td>{fmt(c.created_at)}</td></tr>)}</tbody></table>{!campaigns.length&&<div className="empty-state">{tr('لا توجد حملات بعد.','No campaigns yet.')}</div>}</div>
+   <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>{tr('اسم الحملة','Campaign')}</th><th>Template</th><th>{tr('اللغة','Language')}</th><th>{tr('الحالة','Status')}</th><th>{tr('موعد الإرسال','Schedule')}</th><th>{tr('تاريخ الإنشاء','Created')}</th><th>{tr('إجراء','Action')}</th></tr></thead><tbody>{campaigns.map(c=><tr key={c.id}><td><b>{c.name}</b></td><td>{c.template_name}</td><td>{c.template_language}</td><td><span className={'wa-campaign-state '+c.status}>{campaignStatus(c.status)}</span></td><td>{fmt(c.scheduled_at)}</td><td>{fmt(c.created_at)}</td><td>{(c.status==='draft'||c.status==='paused')&&<button className="secondary-btn" disabled={busy} onClick={()=>void startCampaign(c)}><Send size={13}/>{tr('إرسال دفعة','Send batch')}</button>}</td></tr>)}</tbody></table>{!campaigns.length&&<div className="empty-state">{tr('لا توجد حملات بعد.','No campaigns yet.')}</div>}</div>
   </div>}
   {tab==='analytics'&&<div className="wa-section"><div className="wa-section-head"><div><h2>{tr('WhatsApp Analytics','WhatsApp Analytics')}</h2><p>{tr('مؤشرات الأداء من الرسائل والمحادثات المسجلة في النظام.','Performance metrics from messages and conversations recorded in the system.')}</p></div></div>
    <div className="wa-kpis analytics"><div><small>{tr('المحادثات الكلية','Total conversations')}</small><b>{conversations.length}</b><em>{conversations.filter(c=>c.status==='open'||c.status==='pending').length} {tr('نشطة','active')}</em></div><div><small>{tr('الرسائل الواردة','Inbound messages')}</small><b>{totalInbound}</b></div><div><small>{tr('الرسائل الصادرة','Outbound messages')}</small><b>{totalOutbound}</b></div><div><small>{tr('تم التسليم / القراءة','Delivered / read')}</small><b>{delivered}</b></div><div><small>{tr('الرسائل الفاشلة','Failed messages')}</small><b>{failed}</b></div><div><small>{tr('مؤشر الرد التقريبي','Approx. reply ratio')}</small><b>{responseRate}%</b></div></div>
