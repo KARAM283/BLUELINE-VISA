@@ -83,7 +83,18 @@ async function processWebhook(payload: any) {
         occurred_at: timestamp,
       });
       if (saveError && saveError.code !== "23505") throw saveError;
-      await db.from("whatsapp_contacts").update({ last_inbound_at: timestamp, updated_at: new Date().toISOString() }).eq("id", contact.id);
+      const inboundCommand = String(body || "").trim().toLowerCase();
+      const consentPatch: Record<string, unknown> = { last_inbound_at: timestamp, updated_at: new Date().toISOString() };
+      if (["stop", "unsubscribe", "cancel", "end", "quit"].includes(inboundCommand)) {
+        consentPatch.consent_status = "opted_out";
+        consentPatch.consent_source = "whatsapp_keyword";
+        consentPatch.consent_at = timestamp;
+      } else if (["start", "subscribe"].includes(inboundCommand)) {
+        consentPatch.consent_status = "opted_in";
+        consentPatch.consent_source = "whatsapp_keyword";
+        consentPatch.consent_at = timestamp;
+      }
+      await db.from("whatsapp_contacts").update(consentPatch).eq("id", contact.id);
       await db.from("whatsapp_conversations").update({
         status: conversation.status === "resolved" || conversation.status === "archived" ? "open" : conversation.status,
         last_message_at: timestamp, last_message_preview: body || `[${msg.type || "media"}]`,
