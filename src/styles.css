@@ -845,3 +845,116 @@ td small{font-size:11px}
   .modal-card .modal-head h2{font-size:18px}
   .modal-card .modal-actions{gap:8px;margin-top:18px;padding-top:14px}
 }
+
+
+/* GLOBAL FULL-SCREEN MODAL SYSTEM — applies to every existing modal */
+body:has(> #root .modal-backdrop),
+body:has(.modal-backdrop){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+.modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483647!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#fff!important;
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  overscroll-behavior:contain!important;
+}
+.modal-backdrop>.modal-card{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center;
+  box-sizing:border-box!important;
+  width:100vw!important;
+  max-width:none!important;
+  min-width:0!important;
+  height:100vh!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  min-height:100dvh!important;
+  margin:0!important;
+  padding:clamp(22px,3vw,48px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+  scrollbar-gutter:stable;
+}
+.modal-backdrop>.modal-card>*{
+  width:100%;
+  max-width:1440px;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  flex-shrink:0;
+}
+.modal-backdrop>.modal-card>.modal-head{
+  position:relative!important;
+  top:auto!important;
+  padding:0 64px 18px 0!important;
+  border-bottom:1px solid #e9edf3;
+}
+.modal-backdrop>.modal-card>.modal-head>button.icon-btn{
+  position:fixed!important;
+  top:clamp(12px,2vh,24px)!important;
+  right:clamp(12px,2vw,28px)!important;
+  z-index:2147483647!important;
+  width:42px!important;
+  height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid #e4e9f0!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  box-shadow:0 4px 16px rgba(20,38,61,.10)!important;
+}
+.modal-backdrop>.modal-card>.modal-head>button.icon-btn:hover{
+  background:#f5f7fa!important;
+  border-color:#cbd5e1!important;
+}
+.modal-backdrop>.modal-card>.case-create-layout{
+  width:100%;
+  max-width:1440px;
+  margin:22px auto!important;
+}
+.modal-backdrop>.modal-card>.modal-actions{
+  width:100%;
+  max-width:1440px;
+  margin:20px auto 0!important;
+}
+.modal-backdrop>.modal-card .employee-profile-layout{
+  width:100%;
+  max-width:1440px;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+@media(max-width:900px){
+  .modal-backdrop>.modal-card{padding:18px!important}
+  .modal-backdrop>.modal-card>.case-create-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+  .modal-backdrop>.modal-card .employee-profile-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+  .modal-backdrop>.modal-card .employee-passport-column{position:static}
+}
+@media(max-width:600px){
+  .modal-backdrop>.modal-card{padding:14px!important}
+  .modal-backdrop>.modal-card>.modal-head{padding-right:54px!important}
+  .modal-backdrop>.modal-card>.modal-head>button.icon-btn{top:10px!important;right:10px!important;width:38px!important;height:38px!important}
+  .modal-backdrop>.modal-card .form-row{grid-template-columns:minmax(0,1fr)}
+  .modal-backdrop>.modal-card .case-details-grid{grid-template-columns:minmax(0,1fr)}
+  .modal-backdrop>.modal-card>.modal-actions{justify-content:stretch}
+  .modal-backdrop>.modal-card>.modal-actions button{flex:1}
+}
