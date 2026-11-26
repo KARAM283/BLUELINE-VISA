@@ -10,6 +10,7 @@ import { useLanguage } from './i18n'
 
 const pipelineColors = ['#64748b', '#2563eb', '#8b5cf6', '#d97706', '#059669', '#0d9488', '#be123c']
 const money = (n: number) => new Intl.NumberFormat('en-US').format(n)
+const CASE_COLUMNS = 'id,case_number,customer_full_name,customer_phone,date_of_birth,expire_date,country_id,visa_type_id,pipeline_id,status,priority,due_at,created_at,created_by,assigned_to'
 
 export default function App() {
   const { language, toggleLanguage, isEnglish } = useLanguage()
@@ -40,11 +41,11 @@ export default function App() {
     if (!supabase || !session?.user) { setProfile(null); setCases([]); setLoading(false); return }
     let active = true
     const load = async () => {
-      setLoading(true); setError('')
+      setError('')
       const [{ data: p, error: pe }, { data: roles, error: re }, { data: rows, error: ce }] = await Promise.all([
         supabase!.from('profiles').select('id,full_name,is_active').eq('id', session.user.id).maybeSingle(),
         supabase!.from('user_roles').select('role').eq('user_id', session.user.id),
-        supabase!.from('visa_cases').select('*').order('created_at', { ascending: false }).limit(100)
+        supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at', { ascending: false }).limit(100)
       ])
       if (!active) return
       if (pe || re || ce) setError([pe?.message, re?.message, ce?.message].filter(Boolean).join(' · '))
@@ -144,8 +145,8 @@ export default function App() {
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
-    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} canDelete={role==='manager'||role==='admin'} onClose={()=>setSelectedCase(null)} onDeleted={async()=>{setSelectedCase(null);const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} onUpdated={async()=>{const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}}/>}
-    {showNew && <NewCaseModal onClose={()=>setShowNew(false)} onCreated={async()=>{setShowNew(false);const {data}=await supabase!.from('visa_cases').select('*').order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} userId={session.user.id}/>}
+    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} canDelete={role==='manager'||role==='admin'} onClose={()=>setSelectedCase(null)} onDeleted={async()=>{setSelectedCase(null);const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} onUpdated={async()=>{const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}}/>}
+    {showNew && <NewCaseModal onClose={()=>setShowNew(false)} onCreated={async()=>{setShowNew(false);const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} userId={session.user.id}/>}
   </div>
 }
 
@@ -391,11 +392,10 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   const {data,error}=await client.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
   if(error){setCompanyError(error.message);setCompaniesLoading(false);return}
   const rows=(data??[]) as CompanyRecord[]
-  const withLogos=await Promise.all(rows.map(async company=>{
-   if(!company.logo_path)return {...company,logo_url:null}
-   const signed=await client.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
-   return {...company,logo_url:signed.data?.signedUrl??null}
-  }))
+  const logoPaths=rows.flatMap(company=>company.logo_path?[company.logo_path]:[])
+  const logoResult=logoPaths.length?await client.storage.from('company-logos').createSignedUrls(logoPaths,3600):{data:[]}
+  const logoUrls=new Map((logoResult.data??[]).map(item=>[item.path,item.signedUrl]))
+  const withLogos=rows.map(company=>({...company,logo_url:company.logo_path?logoUrls.get(company.logo_path)??null:null}))
   setCompanies(withLogos);setCompaniesLoading(false)
  }
 
@@ -403,7 +403,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   if(customerSection==='companies')void loadCompanies()
  },[customerSection])
 
- useEffect(()=>{const client=supabase;if(customerSection!=='individuals'||!client)return;let alive=true;const load=async()=>{setIndividualCustomersLoading(true);const {data,error}=await client.from('individual_customers').select('*').order('full_name');if(!alive)return;if(error){setEmployeeError(error.message);setIndividualCustomersLoading(false);return}const rows=(data??[]) as IndividualCustomer[];const signed=await Promise.all(rows.map(async row=>{const [passport,photo]=await Promise.all([row.passport_path?client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600):Promise.resolve({data:null}),row.profile_photo_path?client.storage.from('employee-passports').createSignedUrl(row.profile_photo_path,3600):Promise.resolve({data:null})]);return {...row,passport_url:passport.data?.signedUrl??null,profile_photo_url:photo.data?.signedUrl??null}}));if(alive)setIndividualCustomers(signed);setIndividualCustomersLoading(false)};void load();return()=>{alive=false}},[customerSection])
+ useEffect(()=>{const client=supabase;if(customerSection!=='individuals'||!client)return;let alive=true;const load=async()=>{setIndividualCustomersLoading(individualCustomers.length===0);const {data,error}=await client.from('individual_customers').select('id,full_name,job_title,department,phone,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,profile_photo_path,parent_customer_id,source_employee_id,created_at').order('full_name');if(!alive)return;if(error){setEmployeeError(error.message);setIndividualCustomersLoading(false);return}const rows=(data??[]) as IndividualCustomer[];const paths=[...new Set(rows.flatMap(row=>[row.passport_path,row.profile_photo_path].filter((path):path is string=>Boolean(path))))];const signed=paths.length?await client.storage.from('employee-passports').createSignedUrls(paths,3600):{data:[]};const urls=new Map((signed.data??[]).map(item=>[item.path,item.signedUrl]));if(alive)setIndividualCustomers(rows.map(row=>({...row,passport_url:row.passport_path?urls.get(row.passport_path)??null:null,profile_photo_url:row.profile_photo_path?urls.get(row.profile_photo_path)??null:null})));setIndividualCustomersLoading(false)};void load();return()=>{alive=false}},[customerSection])
 
  useEffect(()=>{
   if(!companyLogo){setCompanyLogoPreview('');return}
@@ -420,7 +420,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
    const {data,error}=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,profile_photo_path,created_at').eq('company_id',openedCompany.id).order('full_name')
    if(!alive)return
    if(error)setEmployeeError(error.message)
-   else {const rows=(data??[]) as CompanyEmployee[];const withPassports=await Promise.all(rows.map(async row=>{const [passport,photo]=await Promise.all([row.passport_path?client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600):Promise.resolve({data:null}),row.profile_photo_path?client.storage.from('employee-passports').createSignedUrl(row.profile_photo_path,3600):Promise.resolve({data:null})]);return {...row,passport_url:passport.data?.signedUrl??null,profile_photo_url:photo.data?.signedUrl??null}}));if(alive)setEmployees(withPassports)}
+   else {const rows=(data??[]) as CompanyEmployee[];const paths=[...new Set(rows.flatMap(row=>[row.passport_path,row.profile_photo_path].filter((path):path is string=>Boolean(path))))];const signed=paths.length?await client.storage.from('employee-passports').createSignedUrls(paths,3600):{data:[]};const urls=new Map((signed.data??[]).map(item=>[item.path,item.signedUrl]));if(alive)setEmployees(rows.map(row=>({...row,passport_url:row.passport_path?urls.get(row.passport_path)??null:null,profile_photo_url:row.profile_photo_path?urls.get(row.profile_photo_path)??null:null})))}
    setEmployeesLoading(false)
   }
   void load()
@@ -430,7 +430,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  useEffect(()=>{if(!employeePassport){setEmployeePassportPreview('');return}const url=URL.createObjectURL(employeePassport);setEmployeePassportPreview(url);return()=>URL.revokeObjectURL(url)},[employeePassport])
  useEffect(()=>{if(!employeeProfilePhoto){setEmployeeProfilePhotoPreview('');return}const url=URL.createObjectURL(employeeProfilePhoto);setEmployeeProfilePhotoPreview(url);return()=>URL.revokeObjectURL(url)},[employeeProfilePhoto])
 
- useEffect(()=>{const client=supabase;if((!employeeFormOpen||!editingEmployee)&&(!customerFormOpen||!editingIndividualCustomer)||!client){if(!employeeFormOpen&&!customerFormOpen)setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const isCustomer=customerFormOpen;const table=isCustomer?'individual_customer_attachments':'company_employee_attachments';const id=isCustomer?editingIndividualCustomer?.id:editingEmployee?.id;const key=isCustomer?'customer_id':'employee_id';const {data,error}=await client.from(table).select('*').eq(key,id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id,customerFormOpen,editingIndividualCustomer?.id])
+ useEffect(()=>{const client=supabase;if((!employeeFormOpen||!editingEmployee)&&(!customerFormOpen||!editingIndividualCustomer)||!client){if(!employeeFormOpen&&!customerFormOpen)setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const isCustomer=customerFormOpen;const table=isCustomer?'individual_customer_attachments':'company_employee_attachments';const id=isCustomer?editingIndividualCustomer?.id:editingEmployee?.id;const key=isCustomer?'customer_id':'employee_id';const columns=isCustomer?'id,customer_id,file_name,file_path,mime_type,file_size,created_at':'id,employee_id,file_name,file_path,mime_type,file_size,created_at';const {data,error}=await client.from(table).select(columns).eq(key,id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id,customerFormOpen,editingIndividualCustomer?.id])
 
  function startCompanyForm(company:CompanyDisplay|null){
   setEditingCompany(company)
