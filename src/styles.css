@@ -417,3 +417,7 @@ td small{font-size:11px}
 .auth-aside .aside-content-ar h2{font-family:"Noto Sans Arabic","IBM Plex Sans Arabic",Tahoma,sans-serif;letter-spacing:0;line-height:1.45}
 .auth-aside .aside-content-en{font-family:Inter,"Segoe UI",Arial,sans-serif}
 @media(max-width:760px){.auth-aside .aside-content{padding:30px}.auth-aside .aside-content h2{font-size:clamp(34px,8vw,48px)}.auth-aside .aside-stats{margin-top:25px;gap:12px}.auth-aside .aside-stats>div{min-width:110px;padding:10px}}
+
+/* Login layout refinement: remove the logo space and raise the sign-in panel. */
+.auth-card{justify-content:flex-start;padding-top:clamp(28px,7vh,76px)}
+.auth-copy{margin-top:18px}
