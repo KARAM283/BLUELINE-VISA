@@ -557,3 +557,31 @@ td small{font-size:11px}
 .individual-family-section{margin-top:26px;padding-top:20px;border-top:1px solid var(--border)}
 .individual-family-section .panel-head{align-items:center}
 @media(max-width:680px){.individual-customer-card{flex-wrap:wrap}.individual-customer-card-actions{width:100%;justify-content:flex-end}.individual-customer-hero{align-items:flex-start}.individual-customer-hero-actions{width:100%}.individual-customer-hero-actions button{flex:1}}
+
+/* Individual customer profile — balanced header, clear hierarchy and responsive data cards */
+.individual-customer-detail{padding:24px;background:#fff;border:1px solid #e4eaf1;border-radius:20px;box-shadow:0 10px 30px #17294308;overflow:hidden}
+.individual-customer-detail>.secondary-btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;margin-bottom:18px}
+.individual-customer-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:25px;border:1px solid #e5ebf3;border-radius:17px;background:linear-gradient(115deg,#f5f8fc 0%,#fff 68%);border-bottom:1px solid #e5ebf3}
+.individual-customer-identity{display:flex;align-items:center;gap:20px;flex:1;min-width:260px}
+.individual-customer-hero-photo{width:112px;height:112px;flex:0 0 112px;border-radius:18px;background:#eaf0f7;border:1px solid #dce5ef;color:#52739b;box-shadow:0 5px 15px #1729430d}
+.individual-customer-hero-info{min-width:0;flex:1}
+.individual-customer-hero-info .eyebrow{font-size:10px;letter-spacing:1.5px;color:#66809f;font-weight:800}
+.individual-customer-hero-info h2{font-size:clamp(21px,2.4vw,29px);line-height:1.4;margin:7px 0 10px;color:#1c2d43;overflow-wrap:anywhere}
+.individual-customer-contact{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.individual-customer-contact span{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid #e2e9f1;border-radius:9px;background:#fff;color:#52647a;font-size:12px;direction:ltr}
+.individual-customer-contact svg{color:#54749e}
+.individual-customer-family-tag{display:inline-block;margin-top:10px;padding:5px 9px;border-radius:7px;background:#eaf2fc;color:#315f99;font-size:11px}
+.individual-customer-hero-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.individual-customer-hero-actions button{min-height:40px;white-space:nowrap}
+.individual-customer-data-section{margin-top:24px}
+.individual-customer-section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.individual-customer-section-heading .eyebrow{font-size:10px;letter-spacing:1.4px;color:#7890aa;font-weight:800}
+.individual-customer-section-heading h3{margin:5px 0 0;font-size:18px;color:#24364d}
+.individual-customer-info-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0}
+.individual-customer-info-grid>div{min-height:83px;justify-content:center;padding:15px 17px;border:1px solid #e7ecf2;border-radius:12px;background:linear-gradient(145deg,#fff,#f9fbfd)}
+.individual-customer-info-grid span{font-size:11px;font-weight:600;color:#7a8798}
+.individual-customer-info-grid b{font-size:14px;line-height:1.6;color:#26384e}
+.individual-family-section{margin-top:28px;padding-top:23px;border-top:1px solid #e8edf3}
+@media(max-width:850px){.individual-customer-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.individual-customer-hero{align-items:flex-start}.individual-customer-hero-actions{width:100%;justify-content:flex-start}}
+@media(max-width:560px){.individual-customer-detail{padding:13px}.individual-customer-hero{padding:16px;gap:16px}.individual-customer-identity{align-items:flex-start;gap:13px;min-width:0}.individual-customer-hero-photo{width:76px;height:76px;flex-basis:76px;border-radius:13px}.individual-customer-hero-photo svg{width:30px}.individual-customer-hero-info h2{font-size:19px;margin:4px 0 8px}.individual-customer-contact{gap:6px}.individual-customer-contact span{font-size:11px;padding:6px 8px}.individual-customer-hero-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.individual-customer-hero-actions button{justify-content:center;white-space:normal;padding:9px 7px;font-size:11px}.individual-customer-info-grid{grid-template-columns:1fr 1fr;gap:8px}.individual-customer-info-grid>div{min-height:72px;padding:11px}.individual-customer-info-grid b{font-size:12px}}
+@media(max-width:380px){.individual-customer-identity{flex-direction:column}.individual-customer-hero-actions{grid-template-columns:1fr}}
