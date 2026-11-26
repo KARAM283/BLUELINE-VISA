@@ -867,9 +867,9 @@ body:has(.modal-backdrop){
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
-  background:#fff!important;
-  -webkit-backdrop-filter:none!important;
-  backdrop-filter:none!important;
+  background:rgba(9,18,32,.22)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(125%)!important;
+  backdrop-filter:blur(18px) saturate(125%)!important;
   overscroll-behavior:contain!important;
 }
 .modal-backdrop>.modal-card{
@@ -892,7 +892,9 @@ body:has(.modal-backdrop){
   overscroll-behavior:contain!important;
   border:0!important;
   border-radius:0!important;
-  background:#fff!important;
+  background:rgba(255,255,255,.84)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(135%)!important;
+  backdrop-filter:blur(22px) saturate(135%)!important;
   box-shadow:none!important;
   scrollbar-gutter:stable;
 }
