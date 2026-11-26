@@ -4,6 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") || "";
 const PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") || "";
+const WABA_ID = Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID") || "";
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "";
 const APP_SECRET = Deno.env.get("META_APP_SECRET") || "";
 const GRAPH_VERSION = Deno.env.get("WHATSAPP_GRAPH_VERSION") || "v23.0";
@@ -148,6 +149,24 @@ Deno.serve(async (req: Request) => {
   if (authError || !userData.user) return json({ error: "Invalid session" }, 401);
   const action = body.action;
   try {
+    if (action === "sync_templates") {
+      if (!ACCESS_TOKEN || !WABA_ID) return json({ error: "Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_BUSINESS_ACCOUNT_ID secrets first." }, 400);
+      const response = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${WABA_ID}/message_templates?fields=id,name,language,category,status,components&limit=100`, { headers: { authorization: `Bearer ${ACCESS_TOKEN}` } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error?.message || "Could not sync Meta templates");
+      const rows = (result.data || []).map((item: any) => ({ meta_template_id: item.id, name: item.name, language: item.language, category: item.category, status: String(item.status || "unknown").toLowerCase(), components: item.components || [], last_synced_at: new Date().toISOString() }));
+      for (const row of rows) {
+        const { data: existing } = await db.from("whatsapp_templates").select("id").eq("name", row.name).eq("language", row.language).maybeSingle();
+        if (existing) {
+          const { error } = await db.from("whatsapp_templates").update(row).eq("id", existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await db.from("whatsapp_templates").insert(row);
+          if (error) throw error;
+        }
+      }
+      return json({ synced: rows.length, templates: rows });
+    }
     if (action === "send_text") {
       const { data: conversation, error } = await db.from("whatsapp_conversations").select("id,contact_id,window_expires_at,whatsapp_contacts(phone_e164)").eq("id", body.conversation_id).single();
       if (error || !conversation) return json({ error: "Conversation not found" }, 404);
