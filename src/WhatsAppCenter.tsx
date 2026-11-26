@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, BarChart3, CheckCheck, CircleAlert, Clock3, Megaphone, MessageCircle, Plus, RefreshCw, Search, Send, Settings2, Users, X } from 'lucide-react'
+import { ArrowLeft, BarChart3, CheckCheck, CircleAlert, Megaphone, MessageCircle, Plus, RefreshCw, Search, Send, Settings2, X } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
 type Contact={id:string;phone_e164:string;display_name:string|null;profile_name:string|null;consent_status:string;last_inbound_at:string|null}
