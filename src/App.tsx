@@ -360,12 +360,11 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [newEmployeeAttachments,setNewEmployeeAttachments]=useState<File[]>([])
  const [attachmentsLoading,setAttachmentsLoading]=useState(false)
  const [employeeSaving,setEmployeeSaving]=useState(false)
+ const [employeeOcrBusy,setEmployeeOcrBusy]=useState(false)
  const [employeeError,setEmployeeError]=useState('')
  const [employeeName,setEmployeeName]=useState('')
- const [employeeNumber,setEmployeeNumber]=useState('')
  const [employeeTitle,setEmployeeTitle]=useState('')
  const [employeePhone,setEmployeePhone]=useState('')
- const [employeeEmail,setEmployeeEmail]=useState('')
  const apps=[
   {id:'customers',title:'Customers - Organization',description:'إدارة العملاء والشركات والمؤسسات وبيانات التواصل.',icon:<Building2 size={27}/>,code:'CUSTOMERS / ORGANIZATION'},
   {id:'flights',title:'Flights',description:'مساحة إدارة الرحلات ومعلومات الطيران والحجوزات.',icon:<Plane size={27}/>,code:'FLIGHT OPERATIONS'},
@@ -471,21 +470,67 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   }finally{setCompanySaving(false)}
  }
 
- function startEmployeeForm(employee:EmployeeDisplay|null){setEditingEmployee(employee);setEmployeeName(employee?.full_name??'');setEmployeeNumber(employee?.employee_number??'');setEmployeeTitle(employee?.job_title??'');setEmployeeDepartment(employee?.department??'');setEmployeePhone(employee?.phone??'');setEmployeeEmail(employee?.email??'');setEmployeeBirth(employee?.date_of_birth??'');setEmployeeNationality(employee?.nationality??'');setEmployeePassportNumber(employee?.passport_number??'');setEmployeePassportIssue(employee?.passport_issue_date??'');setEmployeePassportExpiry(employee?.passport_expiry_date??'');setEmployeePassport(null);setNewEmployeeAttachments([]);setEmployeeAttachments([]);setEmployeeError('');setEmployeeFormOpen(true)}
- async function addEmployee(e:FormEvent){
-  e.preventDefault();const client=supabase;if(!client||!openedCompany||employeeSaving)return
-  setEmployeeSaving(true);setEmployeeError('');let uploadedPath:string|null=null
+ async function readEmployeePassport(file:File){
+  const client=supabase
+  if(!client)return
+  const supported=['application/pdf','image/jpeg','image/png','image/webp']
+  if(!supported.includes(file.type)){setEmployeeError(isEnglish?'Use a PDF, JPG, PNG or WEBP passport.':'ارفع جواز بصيغة PDF أو JPG أو PNG أو WEBP.');return}
+  if(file.size>4*1024*1024){setEmployeeError(isEnglish?'Gemini reading is limited to 4 MB. The passport can still be saved up to 10 MB.':'قراءة Gemini تتطلب ملفاً أقل من 4 MB. تگدر تحفظ الجواز كمرفق لحد 10 MB.');return}
+  setEmployeeOcrBusy(true);setEmployeeError('')
   try{
-   const payload={full_name:employeeName.trim(),employee_number:employeeNumber.trim()||null,job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,email:employeeEmail.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null}
+   const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>{const result=String(reader.result||'');resolve(result.slice(result.indexOf(',')+1))};reader.onerror=()=>reject(new Error(isEnglish?'Could not read the file':'تعذرت قراءة الملف'));reader.readAsDataURL(file)})
+   const {data,error:invokeError}=await client.functions.invoke('passport-ocr',{body:{fileName:file.name,mimeType:file.type,base64}})
+   if(invokeError){let detail=invokeError.message||'Gemini OCR failed';const context=(invokeError as {context?:unknown}).context;if(context instanceof Response){try{const body=await context.clone().json();if(body?.error)detail=String(body.error)}catch{}}throw new Error(detail)}
+   if(data?.error)throw new Error(data.error)
+   const extracted=data?.data
+   if(!extracted)throw new Error(isEnglish?'No passport data was detected':'لم يتم استخراج بيانات من الجواز')
+   const fullName=String(extracted.full_name||[extracted.first_name,extracted.last_name].filter(Boolean).join(' ')).trim()
+   if(fullName)setEmployeeName(fullName)
+   if(extracted.passport_number)setEmployeePassportNumber(String(extracted.passport_number))
+   if(extracted.nationality)setEmployeeNationality(String(extracted.nationality))
+   if(extracted.date_of_birth)setEmployeeBirth(String(extracted.date_of_birth))
+   if(extracted.issue_date)setEmployeePassportIssue(String(extracted.issue_date))
+   if(extracted.expiry_date)setEmployeePassportExpiry(String(extracted.expiry_date))
+  }catch(error){setEmployeeError((error instanceof Error?error.message:'Gemini OCR failed')+(isEnglish?' — You can enter the details manually.':' — تگدر تدخل البيانات يدوياً.'))}
+  finally{setEmployeeOcrBusy(false)}
+ }
+ function startEmployeeForm(employee:EmployeeDisplay|null){setEditingEmployee(employee);setEmployeeName(employee?.full_name??'');setEmployeeTitle(employee?.job_title??'');setEmployeeDepartment(employee?.department??'');setEmployeePhone(employee?.phone??'');setEmployeeBirth(employee?.date_of_birth??'');setEmployeeNationality(employee?.nationality??'');setEmployeePassportNumber(employee?.passport_number??'');setEmployeePassportIssue(employee?.passport_issue_date??'');setEmployeePassportExpiry(employee?.passport_expiry_date??'');setEmployeePassport(null);setNewEmployeeAttachments([]);setEmployeeAttachments([]);setEmployeeError('');setEmployeeFormOpen(true)}
+ async function addEmployee(e:FormEvent){
+  e.preventDefault();const client=supabase;if(!client||!openedCompany||employeeSaving||employeeOcrBusy)return
+  if(!employeeName.trim()){setEmployeeError(isEnglish?'Read a passport or enter the employee name.':'اقرأ الجواز أو أدخل اسم الموظف.');return}
+  setEmployeeSaving(true);setEmployeeError('')
+  const uploadedPaths:string[]=[]
+  try{
+   const payload={full_name:employeeName.trim(),job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null}
    let employeeId=editingEmployee?.id
    if(editingEmployee){const updated=await client.from('company_employees').update(payload).eq('id',editingEmployee.id);if(updated.error)throw updated.error}
    else{const created=await client.from('company_employees').insert({...payload,company_id:openedCompany.id}).select('id').single();if(created.error)throw created.error;employeeId=created.data.id}
-   if(employeePassport&&employeeId){const ext=employeePassport.name.split('.').pop()?.toLowerCase()||(employeePassport.type==='application/pdf'?'pdf':'jpg');uploadedPath=openedCompany.id+'/'+employeeId+'/'+crypto.randomUUID()+'.'+ext;const uploaded=await client.storage.from('employee-passports').upload(uploadedPath,employeePassport,{contentType:employeePassport.type,upsert:false});if(uploaded.error)throw uploaded.error;const saved=await client.from('company_employees').update({passport_path:uploadedPath}).eq('id',employeeId);if(saved.error)throw saved.error;if(editingEmployee?.passport_path)await client.storage.from('employee-passports').remove([editingEmployee.passport_path])}
-   if(employeeId&&newEmployeeAttachments.length){for(const file of newEmployeeAttachments){const ext=file.name.split('.').pop()?.toLowerCase()||'bin';const path=openedCompany.id+'/'+employeeId+'/attachments/'+crypto.randomUUID()+'.'+ext;const upload=await client.storage.from('employee-passports').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});if(upload.error)throw upload.error;const record=await client.from('company_employee_attachments').insert({employee_id:employeeId,file_name:file.name,file_path:path,mime_type:file.type||null,file_size:file.size});if(record.error){await client.storage.from('employee-passports').remove([path]);throw record.error}}}
-   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,created_at').eq('company_id',openedCompany.id).order('full_name');if(refreshed.error)throw refreshed.error
-   const rows=(refreshed.data??[]) as CompanyEmployee[];const withPassports=await Promise.all(rows.map(async row=>{if(!row.passport_path)return {...row,passport_url:null};const signed=await client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600);return {...row,passport_url:signed.data?.signedUrl??null}}))
-   setEmployees(withPassports);setEmployeeFormOpen(false);setEditingEmployee(null);setEmployeePassport(null)
-  }catch(err){if(uploadedPath)await client.storage.from('employee-passports').remove([uploadedPath]);setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not save employee':'تعذر حفظ بيانات الموظف'))}finally{setEmployeeSaving(false)}
+   if(!employeeId)throw new Error('Employee record was not created')
+   const uploadTasks:Promise<void>[]=[]
+   let nextPassportPath:string|null=null
+   if(employeePassport){
+    const ext=employeePassport.name.split('.').pop()?.toLowerCase()||(employeePassport.type==='application/pdf'?'pdf':'jpg')
+    nextPassportPath=openedCompany.id+'/'+employeeId+'/'+crypto.randomUUID()+'.'+ext
+    const path=nextPassportPath
+    uploadTasks.push((async()=>{const result=await client.storage.from('employee-passports').upload(path,employeePassport,{contentType:employeePassport.type,upsert:false});if(result.error)throw result.error;uploadedPaths.push(path)})())
+   }
+   const attachmentRows=newEmployeeAttachments.map(file=>{const ext=file.name.split('.').pop()?.toLowerCase()||'bin';return {file,path:openedCompany.id+'/'+employeeId+'/attachments/'+crypto.randomUUID()+'.'+ext}})
+   for(const item of attachmentRows)uploadTasks.push((async()=>{const result=await client.storage.from('employee-passports').upload(item.path,item.file,{contentType:item.file.type||'application/octet-stream',upsert:false});if(result.error)throw result.error;uploadedPaths.push(item.path)})())
+   await Promise.all(uploadTasks)
+   const dbTasks:Promise<void>[]=[]
+   if(nextPassportPath)dbTasks.push((async()=>{const saved=await client.from('company_employees').update({passport_path:nextPassportPath}).eq('id',employeeId);if(saved.error)throw saved.error})())
+   if(attachmentRows.length)dbTasks.push((async()=>{const saved=await client.from('company_employee_attachments').insert(attachmentRows.map(({file,path})=>({employee_id:employeeId,file_name:file.name,file_path:path,mime_type:file.type||null,file_size:file.size})));if(saved.error)throw saved.error})())
+   await Promise.all(dbTasks)
+   if(nextPassportPath&&editingEmployee?.passport_path)void client.storage.from('employee-passports').remove([editingEmployee.passport_path])
+   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,department,phone,email,date_of_birth,nationality,passport_number,passport_issue_date,passport_expiry_date,passport_path,created_at').eq('company_id',openedCompany.id).order('full_name')
+   if(refreshed.error)throw refreshed.error
+   const rows=(refreshed.data??[]) as CompanyEmployee[]
+   const withPassports=await Promise.all(rows.map(async row=>{if(!row.passport_path)return {...row,passport_url:null};const signed=await client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600);return {...row,passport_url:signed.data?.signedUrl??null}}))
+   setEmployees(withPassports);setEmployeeFormOpen(false);setEditingEmployee(null);setEmployeePassport(null);setNewEmployeeAttachments([]);setEmployeeAttachments([])
+  }catch(err){
+   if(uploadedPaths.length)await client.storage.from('employee-passports').remove(uploadedPaths)
+   setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not save employee':'تعذر حفظ بيانات الموظف'))
+  }finally{setEmployeeSaving(false)}
  }
  async function deleteEmployee(employee:CompanyEmployee){
   const client=supabase
@@ -521,27 +566,25 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
      <div className="panel-head" style={{marginTop:24,alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h3 style={{fontSize:22}}>{isEnglish?'Employees':'الموظفون'}</h3><p style={{color:'var(--muted)',marginTop:6}}>{isEnglish?'Employee profiles registered under this company.':'الملفات الشخصية المسجلة ضمن هذه الشركة.'}</p></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button type="button" className="secondary-btn" onClick={()=>setEmployeesSectionOpen(false)}>{isEnglish?'Back':'رجوع'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(null)}><Plus size={16}/>{isEnglish?'Add employee':'إضافة موظف'}</button></div></div>
     {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
     {employeesLoading?<div className="loading-card" style={{marginTop:18}}>{isEnglish?'Loading employees...':'جارٍ تحميل الموظفين...'}</div>:employees.length?<div className="employee-directory-grid" style={{marginTop:18}}>
-     {employees.map(employee=><article key={employee.id} className="employee-directory-card"><div className="employee-avatar">{employee.full_name.trim().charAt(0).toUpperCase()}</div><h3 className="employee-directory-name">{employee.full_name}</h3><div className="employee-directory-role">{employee.job_title||(isEnglish?'Job title not specified':'المسمى الوظيفي غير محدد')}</div><div className="employee-directory-meta">{employee.employee_number&&(isEnglish?'Employee no. ':'الرقم الوظيفي: ')+employee.employee_number}</div><div className="employee-directory-meta">{employee.department||''}</div><div className="employee-directory-actions"><button type="button" className="secondary-btn" onClick={()=>startEmployeeForm(employee)}><Settings2 size={15}/>{isEnglish?'Edit profile':'تعديل الملف'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(employee)}>{isEnglish?'Open profile':'فتح الملف'} <ArrowLeft size={15}/></button><button type="button" className="icon-btn" title={isEnglish?'Delete employee':'حذف الموظف'} onClick={()=>void deleteEmployee(employee)}><Trash2 size={15}/></button></div></article>)}
+     {employees.map(employee=><article key={employee.id} className="employee-directory-card"><div className="employee-card-top"><div className="employee-avatar">{employee.full_name.trim().charAt(0).toUpperCase()}</div><div className="employee-card-identity"><h3 className="employee-directory-name">{employee.full_name}</h3><span className="employee-directory-role">{employee.job_title||(isEnglish?'Job title not specified':'المسمى الوظيفي غير محدد')}</span></div></div><div className="employee-card-details"><div><span>{isEnglish?'Department':'القسم'}</span><b>{employee.department||'—'}</b></div><div><span>{isEnglish?'Phone':'رقم الهاتف'}</span><b dir="ltr">{employee.phone||'—'}</b></div><div><span>{isEnglish?'Passport':'جواز السفر'}</span><b dir="ltr">{employee.passport_number||'—'}</b></div></div><div className="employee-directory-actions"><button type="button" className="secondary-btn" onClick={()=>startEmployeeForm(employee)}><Settings2 size={15}/>{isEnglish?'Edit':'تعديل'}</button><button type="button" className="primary-btn" onClick={()=>startEmployeeForm(employee)}>{isEnglish?'Open profile':'فتح الملف'} <ArrowLeft size={15}/></button><button type="button" className="icon-btn" title={isEnglish?'Delete employee':'حذف الموظف'} onClick={()=>void deleteEmployee(employee)}><Trash2 size={15}/></button></div></article>)}
     </div>:<div className="empty-state" style={{marginTop:18,padding:28}}><Users size={28}/><b>{isEnglish?'No employees registered':'لا يوجد موظفون مسجلون'}</b><span>{isEnglish?'Open the Employees section to add the first employee.':'ادخل إلى قسم الموظفين لإضافة أول موظف.'}</span></div>}
     {employeeFormOpen&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!employeeSaving)setEmployeeFormOpen(false)}}><form className="modal-card employee-profile-modal" onSubmit={addEmployee} style={{maxWidth:1100}}>
-     <div className="modal-head"><div><span className="eyebrow">{isEnglish?'EMPLOYEE PROFILE':'الملف الشخصي للموظف'}</span><h2>{editingEmployee?(isEnglish?'Edit employee':'تعديل بيانات الموظف'):(isEnglish?'Add employee':'إضافة موظف')}</h2><p>{isEnglish?'Employee record for ':'ملف الموظف التابع لشركة '}{openedCompany.name}</p></div><button type="button" className="icon-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}><X/></button></div>
+     <div className="modal-head"><div><span className="eyebrow">{isEnglish?'EMPLOYEE PROFILE':'الملف الشخصي للموظف'}</span><h2>{editingEmployee?(isEnglish?'Edit employee':'تعديل بيانات الموظف'):(isEnglish?'Add employee':'إضافة موظف')}</h2><p>{isEnglish?'Employee record for ':'ملف الموظف التابع لشركة '}{openedCompany.name}</p></div><button type="button" className="icon-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving||employeeOcrBusy}><X/></button></div>
      <div className="employee-profile-layout" dir="ltr">
       <aside className="employee-passport-column" dir={isEnglish?'ltr':'rtl'}>
        <div className="employee-document-heading"><b>{isEnglish?'Passport':'جواز السفر'}</b><span>{isEnglish?'Main identification document':'وثيقة الهوية الرئيسية'}</span></div>
        <div className="employee-passport-preview employee-passport-preview-large">
         {(employeePassport?.type==='application/pdf'||(!employeePassport&&editingEmployee?.passport_url?.toLowerCase().includes('.pdf')))?(employeePassportPreview?<iframe title={isEnglish?'Passport preview':'معاينة جواز السفر'} src={employeePassportPreview}/>:editingEmployee?.passport_url?<iframe title={isEnglish?'Passport preview':'معاينة جواز السفر'} src={editingEmployee.passport_url}/>:<div className="employee-document-empty"><FileText size={34}/><span>{isEnglish?'No passport uploaded':'لم يتم إرفاق جواز السفر'}</span></div>):(employeePassportPreview||editingEmployee?.passport_url)?<img src={employeePassportPreview||editingEmployee?.passport_url||''} alt={isEnglish?'Passport preview':'معاينة جواز السفر'}/>:<div className="employee-document-empty"><FileImage size={34}/><span>{isEnglish?'Passport preview will appear here':'ستظهر معاينة الجواز هنا'}</span></div>}
        </div>
-       <label className="employee-file-picker"><Upload size={16}/>{isEnglish?'Upload / Replace passport':'رفع / استبدال الجواز'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>{const file=e.target.files?.[0]??null;if(file&&file.size>10*1024*1024){setEmployeeError(isEnglish?'File must not exceed 10 MB':'يجب ألا يتجاوز حجم الملف 10 MB');e.currentTarget.value='';return}setEmployeeError('');setEmployeePassport(file)}} disabled={employeeSaving}/></label>
-       <small className="employee-file-hint">{isEnglish?'PDF, JPG, PNG or WEBP · Max 10 MB':'PDF أو JPG أو PNG أو WEBP · الحد الأقصى 10 MB'}</small>
+       <label className="employee-file-picker"><Upload size={16}/>{isEnglish?'Upload / Replace passport':'رفع / استبدال الجواز'}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>{const file=e.target.files?.[0]??null;e.currentTarget.value='';if(!file)return;if(file.size>10*1024*1024){setEmployeeError(isEnglish?'File must not exceed 10 MB':'يجب ألا يتجاوز حجم الملف 10 MB');return}setEmployeeError('');setEmployeePassport(file);void readEmployeePassport(file)}} disabled={employeeSaving||employeeOcrBusy}/></label>
+       <small className="employee-file-hint">{isEnglish?'PDF, JPG, PNG or WEBP · Max 10 MB':'PDF أو JPG أو PNG أو WEBP · الحد الأقصى 10 MB'}</small>{employeeOcrBusy&&<small className="employee-ocr-status">{isEnglish?'Gemini is reading the passport...':'Gemini دا يقرأ بيانات الجواز...'}</small>}
       </aside>
       <div className="employee-profile-fields" dir={isEnglish?'ltr':'rtl'}>
        <div className="employee-form-grid">
         <label>{isEnglish?'Full name':'الاسم الكامل'}<input dir="auto" value={employeeName} onChange={e=>setEmployeeName(e.target.value)} required maxLength={160}/></label>
-        <label>{isEnglish?'Employee number':'الرقم الوظيفي'}<input dir="ltr" value={employeeNumber} onChange={e=>setEmployeeNumber(e.target.value)} maxLength={80}/></label>
         <label>{isEnglish?'Job title':'المسمى الوظيفي'}<input dir="auto" value={employeeTitle} onChange={e=>setEmployeeTitle(e.target.value)} maxLength={120}/></label>
         <label>{isEnglish?'Department':'القسم'}<input dir="auto" value={employeeDepartment} onChange={e=>setEmployeeDepartment(e.target.value)} maxLength={120}/></label>
         <label>{isEnglish?'Phone number':'رقم الهاتف'}<input dir="ltr" value={employeePhone} onChange={e=>setEmployeePhone(e.target.value)} maxLength={50}/></label>
-        <label>{isEnglish?'Email address':'البريد الإلكتروني'}<input dir="ltr" type="email" value={employeeEmail} onChange={e=>setEmployeeEmail(e.target.value)} maxLength={160}/></label>
         <label>{isEnglish?'Date of birth':'تاريخ الميلاد'}<input dir="ltr" type="date" value={employeeBirth} onChange={e=>setEmployeeBirth(e.target.value)}/></label>
         <label>{isEnglish?'Nationality':'الجنسية'}<input dir="auto" value={employeeNationality} onChange={e=>setEmployeeNationality(e.target.value)} maxLength={100}/></label>
         <label>{isEnglish?'Passport number':'رقم جواز السفر'}<input dir="ltr" value={employeePassportNumber} onChange={e=>setEmployeePassportNumber(e.target.value)} maxLength={80}/></label>
@@ -559,7 +602,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
       </div>
      </div>
      {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
-     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>{isEnglish?'Cancel':'إلغاء'}</button><button type="submit" className="primary-btn" disabled={employeeSaving}>{employeeSaving?(isEnglish?'Saving...':'جارٍ الحفظ...'):(editingEmployee?(isEnglish?'Save changes':'حفظ التعديلات'):(isEnglish?'Save employee':'حفظ الموظف'))}<Plus size={16}/></button></div>
+     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>{isEnglish?'Cancel':'إلغاء'}</button><button type="submit" className="primary-btn" disabled={employeeSaving||employeeOcrBusy}>{employeeSaving?(isEnglish?'Saving...':'جارٍ الحفظ...'):(editingEmployee?(isEnglish?'Save changes':'حفظ التعديلات'):(isEnglish?'Save employee':'حفظ الموظف'))}<Plus size={16}/></button></div>
     </form></div>}
     </div>}
    </> : <>
