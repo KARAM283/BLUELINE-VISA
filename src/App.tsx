@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, FileText, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Trash2, Users, WalletCards, X, Plane, Trees, Luggage, Compass, MapPin, Globe2 } from 'lucide-react'
+import { Activity, ArrowLeft, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, FileText, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Trash2, Users, WalletCards, X, Plane, Trees, Luggage, Compass, MapPin, Globe2, Building2, MessageCircle } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
@@ -321,15 +321,30 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 
 
 function TravelOperationsWorkspace(){
- return <section className="panel" style={{minHeight:320,padding:32}}>
+ const [activeApp,setActiveApp]=useState<string|null>(null)
+ const apps=[
+  {id:'customers',title:'Customers - Organization',description:'إدارة العملاء والشركات والمؤسسات وبيانات التواصل.',icon:<Building2 size={27}/>,code:'CUSTOMERS / ORGANIZATION'},
+  {id:'flights',title:'Flights',description:'مساحة إدارة الرحلات ومعلومات الطيران والحجوزات.',icon:<Plane size={27}/>,code:'FLIGHT OPERATIONS'},
+  {id:'whatsapp',title:'WhatsApp',description:'مساحة متابعة محادثات واتساب والتواصل مع العملاء.',icon:<MessageCircle size={27}/>,code:'CUSTOMER COMMUNICATION'}
+ ]
+ const selected=apps.find(app=>app.id===activeApp)
+ if(selected)return <section className="panel" style={{minHeight:360,padding:32}}>
+  <button type="button" className="secondary-btn" onClick={()=>setActiveApp(null)}><ArrowLeft size={16}/> Back to Travel Operations</button>
+  <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
+   <div><span className="eyebrow">{selected.code}</span><h2 style={{fontSize:28,marginTop:10}}>{selected.title}</h2><p style={{marginTop:8}}>{selected.description}</p></div>
+   <div className="metric-icon tone-blue">{selected.icon}</div>
+  </div>
+  <div className="empty-state" style={{marginTop:34,padding:32}}><div className="metric-icon tone-blue">{selected.icon}</div><b>{selected.title}</b><span>تم فتح مساحة التطبيق. الواجهة الأساسية جاهزة، ويمكن إضافة وظائفه وربطه ببيانات النظام بالخطوة التالية.</span></div>
+ </section>
+ return <section className="panel" style={{minHeight:360,padding:32}}>
   <div className="panel-head" style={{alignItems:'flex-start'}}>
-   <div><span className="eyebrow">BLUE LINE TRAVEL / OPERATIONS</span><h2 style={{fontSize:28,marginTop:10}}>Travel Operations</h2><p style={{marginTop:8}}>مساحة مستقلة لإدارة ومتابعة العمليات التشغيلية للسفر.</p></div>
+   <div><span className="eyebrow">BLUE LINE TRAVEL / OPERATIONS</span><h2 style={{fontSize:28,marginTop:10}}>Travel Operations</h2><p style={{marginTop:8}}>اختر التطبيق الذي تريد العمل عليه.</p></div>
    <div className="metric-icon tone-blue"><Plane size={22}/></div>
   </div>
-  <div className="empty-state" style={{marginTop:34,padding:28}}>
-   <Plane size={30}/>
-   <b>مرحباً بك في قسم Travel Operations</b>
-   <span>تم إنشاء القسم بشكل مستقل. يمكن الآن تحديد أدوات وإجراءات العمل التي تريد إضافتها إليه.</span>
+  <div className="travel-app-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:18,marginTop:30}}>
+   {apps.map(app=><button key={app.id} type="button" onClick={()=>setActiveApp(app.id)} className="panel travel-app-card" style={{textAlign:'start',padding:24,cursor:'pointer',minHeight:190,display:'flex',flexDirection:'column',alignItems:'flex-start',gap:14}}>
+    <div className="metric-icon tone-blue">{app.icon}</div><b style={{fontSize:18}}>{app.title}</b><span style={{color:'var(--muted)',lineHeight:1.7,fontSize:13}}>{app.description}</span><span className="text-btn" style={{marginTop:'auto'}}>Open app <ArrowLeft size={14}/></span>
+   </button>)}
   </div>
  </section>
 }
