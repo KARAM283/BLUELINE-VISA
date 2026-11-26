@@ -323,7 +323,8 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 type CompanyRecord={id:string;name:string;company_number:string;location:string;logo_path:string|null;created_at:string}
 type CompanyDisplay=CompanyRecord & {logo_url:string|null}
 type CompanyEmployee={id:string;company_id:string;full_name:string;employee_number:string|null;job_title:string|null;department:string|null;phone:string|null;email:string|null;date_of_birth:string|null;nationality:string|null;passport_number:string|null;passport_issue_date:string|null;passport_expiry_date:string|null;passport_path:string|null;created_at:string}
-type EmployeeDisplay=CompanyEmployee & {passport_url:string|null}\ntype EmployeeAttachment={id:string;employee_id:string;file_name:string;file_path:string;mime_type:string|null;file_size:number|null;file_url:string|null;created_at:string}
+type EmployeeDisplay=CompanyEmployee & {passport_url:string|null}
+type EmployeeAttachment={id:string;employee_id:string;file_name:string;file_path:string;mime_type:string|null;file_size:number|null;file_url:string|null;created_at:string}
 
 function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [activeApp,setActiveApp]=useState<string|null>(null)
@@ -354,7 +355,10 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
  const [employeePassportIssue,setEmployeePassportIssue]=useState('')
  const [employeePassportExpiry,setEmployeePassportExpiry]=useState('')
  const [employeePassport,setEmployeePassport]=useState<File|null>(null)
- const [employeePassportPreview,setEmployeePassportPreview]=useState('')\n const [employeeAttachments,setEmployeeAttachments]=useState<EmployeeAttachment[]>([])\n const [newEmployeeAttachments,setNewEmployeeAttachments]=useState<File[]>([])\n const [attachmentsLoading,setAttachmentsLoading]=useState(false)
+ const [employeePassportPreview,setEmployeePassportPreview]=useState('')
+ const [employeeAttachments,setEmployeeAttachments]=useState<EmployeeAttachment[]>([])
+ const [newEmployeeAttachments,setNewEmployeeAttachments]=useState<File[]>([])
+ const [attachmentsLoading,setAttachmentsLoading]=useState(false)
  const [employeeSaving,setEmployeeSaving]=useState(false)
  const [employeeError,setEmployeeError]=useState('')
  const [employeeName,setEmployeeName]=useState('')
@@ -410,7 +414,9 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   return()=>{alive=false}
  },[openedCompany?.id])
 
- useEffect(()=>{if(!employeePassport){setEmployeePassportPreview('');return}const url=URL.createObjectURL(employeePassport);setEmployeePassportPreview(url);return()=>URL.revokeObjectURL(url)},[employeePassport])\n\n useEffect(()=>{const client=supabase;if(!employeeFormOpen||!editingEmployee||!client){setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const {data,error}=await client.from('company_employee_attachments').select('id,employee_id,file_name,file_path,mime_type,file_size,created_at').eq('employee_id',editingEmployee.id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id])
+ useEffect(()=>{if(!employeePassport){setEmployeePassportPreview('');return}const url=URL.createObjectURL(employeePassport);setEmployeePassportPreview(url);return()=>URL.revokeObjectURL(url)},[employeePassport])
+
+ useEffect(()=>{const client=supabase;if(!employeeFormOpen||!editingEmployee||!client){setEmployeeAttachments([]);return}let alive=true;const load=async()=>{setAttachmentsLoading(true);const {data,error}=await client.from('company_employee_attachments').select('id,employee_id,file_name,file_path,mime_type,file_size,created_at').eq('employee_id',editingEmployee.id).order('created_at');if(error){if(alive)setEmployeeError(error.message);setAttachmentsLoading(false);return}const rows=(data??[]) as Omit<EmployeeAttachment,'file_url'>[];const withUrls=await Promise.all(rows.map(async row=>{const signed=await client.storage.from('employee-passports').createSignedUrl(row.file_path,3600);return {...row,file_url:signed.data?.signedUrl??null}}));if(alive){setEmployeeAttachments(withUrls);setAttachmentsLoading(false)}};void load();return()=>{alive=false}},[employeeFormOpen,editingEmployee?.id])
 
  function startCompanyForm(company:CompanyDisplay|null){
   setEditingCompany(company)
