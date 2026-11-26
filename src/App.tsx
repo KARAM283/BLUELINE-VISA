@@ -349,7 +349,7 @@ function TravelOperationsWorkspace(){
    </button>
   </div>}
  </section>
- if(selected)return <section className="panel" style={{minHeight:360,padding:32}>
+ if(selected)return <section className="panel" style={{minHeight:360,padding:32}}>
   <button type="button" className="secondary-btn" onClick={()=>setActiveApp(null)}><ArrowLeft size={16}/> Back to Travel Operations</button>
   <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
    <div><span className="eyebrow">{selected.code}</span><h2 style={{fontSize:28,marginTop:10}}>{selected.title}</h2><p style={{marginTop:8}}>{selected.description}</p></div>
