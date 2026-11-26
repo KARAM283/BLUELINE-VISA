@@ -747,3 +747,37 @@ td small{font-size:11px}
 @media(prefers-reduced-motion:reduce){
   .modal-backdrop,.modal-backdrop > .modal-card{scroll-behavior:auto}
 }
+
+
+/* Lift modal layers out of animated/clipping dashboard panels */
+.panel:has(.modal-backdrop){
+  position:relative!important;
+  z-index:2147483000!important;
+  overflow:visible!important;
+  transform:none!important;
+  animation:none!important;
+}
+.modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-height:100dvh;
+  z-index:2147483001!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:clamp(14px,2.5vw,32px)!important;
+  background:rgba(9,18,32,.48)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(115%)!important;
+  backdrop-filter:blur(20px) saturate(115%)!important;
+}
+.modal-backdrop > .modal-card{
+  margin:auto!important;
+  max-height:calc(100dvh - 48px)!important;
+}
+@media(max-width:760px){
+  .modal-backdrop{padding:10px!important}
+  .modal-backdrop > .modal-card{max-height:calc(100dvh - 20px)!important}
+}
