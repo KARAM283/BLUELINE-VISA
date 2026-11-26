@@ -120,12 +120,12 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const raw = await req.text();
-  if (!await verifySignature(req, raw)) return json({ error: "Invalid webhook signature" }, 401);
   let body: any;
   try { body = JSON.parse(raw); } catch { return json({ error: "Invalid JSON" }, 400); }
 
   // Meta webhook payloads have an object field. Process them without requiring a user JWT.
   if (body.object === "whatsapp_business_account") {
+    if (!await verifySignature(req, raw)) return json({ error: "Invalid webhook signature" }, 401);
     try { await processWebhook(body); return json({ received: true }); }
     catch (error) { return json({ error: error instanceof Error ? error.message : "Webhook processing failed" }, 500); }
   }
