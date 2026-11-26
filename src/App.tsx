@@ -322,6 +322,7 @@ function CaseDetailsModal({item,userId,canDelete,onClose,onDeleted,onUpdated}:{i
 
 type CompanyRecord={id:string;name:string;company_number:string;location:string;logo_path:string|null;created_at:string}
 type CompanyDisplay=CompanyRecord & {logo_url:string|null}
+type CompanyEmployee={id:string;company_id:string;full_name:string;employee_number:string|null;job_title:string|null;phone:string|null;email:string|null;created_at:string}
 
 function TravelOperationsWorkspace(){
  const [activeApp,setActiveApp]=useState<string|null>(null)
@@ -329,6 +330,8 @@ function TravelOperationsWorkspace(){
  const [companies,setCompanies]=useState<CompanyDisplay[]>([])
  const [companySearch,setCompanySearch]=useState('')
  const [showCompanyForm,setShowCompanyForm]=useState(false)
+ const [editingCompany,setEditingCompany]=useState<CompanyDisplay|null>(null)
+ const [openedCompany,setOpenedCompany]=useState<CompanyDisplay|null>(null)
  const [companyName,setCompanyName]=useState('')
  const [companyNumber,setCompanyNumber]=useState('')
  const [companyLocation,setCompanyLocation]=useState('')
@@ -338,6 +341,16 @@ function TravelOperationsWorkspace(){
  const [companySaving,setCompanySaving]=useState(false)
  const [companyError,setCompanyError]=useState('')
  const [companyNotice,setCompanyNotice]=useState('')
+ const [employees,setEmployees]=useState<CompanyEmployee[]>([])
+ const [employeesLoading,setEmployeesLoading]=useState(false)
+ const [employeeFormOpen,setEmployeeFormOpen]=useState(false)
+ const [employeeSaving,setEmployeeSaving]=useState(false)
+ const [employeeError,setEmployeeError]=useState('')
+ const [employeeName,setEmployeeName]=useState('')
+ const [employeeNumber,setEmployeeNumber]=useState('')
+ const [employeeTitle,setEmployeeTitle]=useState('')
+ const [employeePhone,setEmployeePhone]=useState('')
+ const [employeeEmail,setEmployeeEmail]=useState('')
  const apps=[
   {id:'customers',title:'Customers - Organization',description:'إدارة العملاء والشركات والمؤسسات وبيانات التواصل.',icon:<Building2 size={27}/>,code:'CUSTOMERS / ORGANIZATION'},
   {id:'flights',title:'Flights',description:'مساحة إدارة الرحلات ومعلومات الطيران والحجوزات.',icon:<Plane size={27}/>,code:'FLIGHT OPERATIONS'},
@@ -345,26 +358,23 @@ function TravelOperationsWorkspace(){
  ]
  const selected=apps.find(app=>app.id===activeApp)
 
- useEffect(()=>{
+ async function loadCompanies(){
   const client=supabase
-  if(!customerSection||customerSection!=='companies'||!client)return
-  let alive=true
-  const load=async()=>{
-   setCompaniesLoading(true);setCompanyError('')
-   const {data,error}=await client.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
-   if(!alive)return
-   if(error){setCompanyError(error.message);setCompaniesLoading(false);return}
-   const rows=(data??[]) as CompanyRecord[]
-   const withLogos=await Promise.all(rows.map(async company=>{
-    if(!company.logo_path)return {...company,logo_url:null}
-    const signed=await client.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
-    return {...company,logo_url:signed.data?.signedUrl??null}
-   }))
-   if(alive)setCompanies(withLogos)
-   setCompaniesLoading(false)
-  }
-  void load()
-  return()=>{alive=false}
+  if(!client)return
+  setCompaniesLoading(true);setCompanyError('')
+  const {data,error}=await client.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
+  if(error){setCompanyError(error.message);setCompaniesLoading(false);return}
+  const rows=(data??[]) as CompanyRecord[]
+  const withLogos=await Promise.all(rows.map(async company=>{
+   if(!company.logo_path)return {...company,logo_url:null}
+   const signed=await client.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
+   return {...company,logo_url:signed.data?.signedUrl??null}
+  }))
+  setCompanies(withLogos);setCompaniesLoading(false)
+ }
+
+ useEffect(()=>{
+  if(customerSection==='companies')void loadCompanies()
  },[customerSection])
 
  useEffect(()=>{
@@ -373,83 +383,188 @@ function TravelOperationsWorkspace(){
   return()=>URL.revokeObjectURL(url)
  },[companyLogo])
 
+ useEffect(()=>{
+  const client=supabase
+  if(!openedCompany||!client)return
+  let alive=true
+  const load=async()=>{
+   setEmployeesLoading(true);setEmployeeError('')
+   const {data,error}=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,phone,email,created_at').eq('company_id',openedCompany.id).order('full_name')
+   if(!alive)return
+   if(error)setEmployeeError(error.message)
+   else setEmployees((data??[]) as CompanyEmployee[])
+   setEmployeesLoading(false)
+  }
+  void load()
+  return()=>{alive=false}
+ },[openedCompany?.id])
+
+ function startCompanyForm(company:CompanyDisplay|null){
+  setEditingCompany(company)
+  setCompanyName(company?.name??'')
+  setCompanyNumber(company?.company_number??'')
+  setCompanyLocation(company?.location??'')
+  setCompanyLogo(null)
+  setCompanyError('')
+  setCompanyNotice('')
+  setShowCompanyForm(true)
+ }
+
  async function saveCompany(e:FormEvent){
   e.preventDefault()
-  if(!supabase||companySaving)return
+  const client=supabase
+  if(!client||companySaving)return
   setCompanySaving(true);setCompanyError('');setCompanyNotice('')
-  let createdId:string|null=null
   let uploadedPath:string|null=null
   try{
-   const created=await supabase.from('companies').insert({name:companyName.trim(),company_number:companyNumber.trim(),location:companyLocation.trim()}).select('id').single()
-   if(created.error)throw created.error
-   createdId=created.data.id
-   if(companyLogo){
-    const ext=companyLogo.name.split('.').pop()?.toLowerCase()||'png'
-    uploadedPath=createdId+'/'+crypto.randomUUID()+'.'+ext
-    const uploaded=await supabase.storage.from('company-logos').upload(uploadedPath,companyLogo,{contentType:companyLogo.type,upsert:false})
-    if(uploaded.error)throw uploaded.error
-    const updated=await supabase.from('companies').update({logo_path:uploadedPath}).eq('id',createdId)
+   let companyId=editingCompany?.id
+   if(editingCompany){
+    const updated=await client.from('companies').update({name:companyName.trim(),company_number:companyNumber.trim(),location:companyLocation.trim()}).eq('id',editingCompany.id)
     if(updated.error)throw updated.error
+   }else{
+    const created=await client.from('companies').insert({name:companyName.trim(),company_number:companyNumber.trim(),location:companyLocation.trim()}).select('id').single()
+    if(created.error)throw created.error
+    companyId=created.data.id
    }
-   setCompanyName('');setCompanyNumber('');setCompanyLocation('');setCompanyLogo(null);setShowCompanyForm(false)
-   const refreshed=await supabase.from('companies').select('id,name,company_number,location,logo_path,created_at').order('name')
-   if(refreshed.error)throw refreshed.error
-   const rows=(refreshed.data??[]) as CompanyRecord[]
-   const withLogos=await Promise.all(rows.map(async company=>{
-    if(!company.logo_path)return {...company,logo_url:null}
-    const signed=await supabase!.storage.from('company-logos').createSignedUrl(company.logo_path,3600)
-    return {...company,logo_url:signed.data?.signedUrl??null}
-   }))
-   setCompanies(withLogos);setCompanyNotice('تمت إضافة الشركة بنجاح.')
+   if(companyLogo&&companyId){
+    const ext=companyLogo.name.split('.').pop()?.toLowerCase()||'png'
+    uploadedPath=companyId+'/'+crypto.randomUUID()+'.'+ext
+    const uploaded=await client.storage.from('company-logos').upload(uploadedPath,companyLogo,{contentType:companyLogo.type,upsert:false})
+    if(uploaded.error)throw uploaded.error
+    const logoUpdate=await client.from('companies').update({logo_path:uploadedPath}).eq('id',companyId)
+    if(logoUpdate.error)throw logoUpdate.error
+    if(editingCompany?.logo_path)await client.storage.from('company-logos').remove([editingCompany.logo_path])
+   }
+   setShowCompanyForm(false);setEditingCompany(null);setCompanyLogo(null)
+   setCompanyNotice(editingCompany?'تم تحديث بيانات الشركة.':'تمت إضافة الشركة بنجاح.')
+   await loadCompanies()
+   if(companyId&&openedCompany?.id===companyId){
+    const fresh=await client.from('companies').select('id,name,company_number,location,logo_path,created_at').eq('id',companyId).single()
+    if(!fresh.error&&fresh.data){
+     let logo_url:string|null=null
+     if(fresh.data.logo_path){const signed=await client.storage.from('company-logos').createSignedUrl(fresh.data.logo_path,3600);logo_url=signed.data?.signedUrl??null}
+     setOpenedCompany({...fresh.data,logo_url})
+    }
+   }
   }catch(err){
-   if(createdId)await supabase.from('companies').delete().eq('id',createdId)
-   if(uploadedPath)await supabase.storage.from('company-logos').remove([uploadedPath])
-   setCompanyError(err instanceof Error?err.message:'تعذر إضافة الشركة')
+   if(uploadedPath)await client.storage.from('company-logos').remove([uploadedPath])
+   setCompanyError(err instanceof Error?err.message:'تعذر حفظ بيانات الشركة')
   }finally{setCompanySaving(false)}
  }
 
+ async function addEmployee(e:FormEvent){
+  e.preventDefault()
+  const client=supabase
+  if(!client||!openedCompany||employeeSaving)return
+  setEmployeeSaving(true);setEmployeeError('')
+  try{
+   const result=await client.from('company_employees').insert({
+    company_id:openedCompany.id,
+    full_name:employeeName.trim(),
+    employee_number:employeeNumber.trim()||null,
+    job_title:employeeTitle.trim()||null,
+    phone:employeePhone.trim()||null,
+    email:employeeEmail.trim()||null
+   })
+   if(result.error)throw result.error
+   const refreshed=await client.from('company_employees').select('id,company_id,full_name,employee_number,job_title,phone,email,created_at').eq('company_id',openedCompany.id).order('full_name')
+   if(refreshed.error)throw refreshed.error
+   setEmployees((refreshed.data??[]) as CompanyEmployee[])
+   setEmployeeName('');setEmployeeNumber('');setEmployeeTitle('');setEmployeePhone('');setEmployeeEmail('')
+   setEmployeeFormOpen(false)
+  }catch(err){setEmployeeError(err instanceof Error?err.message:'تعذر إضافة الموظف')}
+  finally{setEmployeeSaving(false)}
+ }
+
+ async function deleteEmployee(employee:CompanyEmployee){
+  const client=supabase
+  if(!client||!window.confirm('تأكيد حذف الموظف '+employee.full_name+'؟'))return
+  const result=await client.from('company_employees').delete().eq('id',employee.id)
+  if(result.error){setEmployeeError(result.error.message);return}
+  setEmployees(current=>current.filter(item=>item.id!==employee.id))
+ }
+
  const filteredCompanies=companies.filter(company=>[company.name,company.company_number,company.location].some(value=>value.toLocaleLowerCase().includes(companySearch.trim().toLocaleLowerCase())))
+
  if(selected?.id==='customers')return <section className="panel" style={{minHeight:360,padding:32}}>
-  <button type="button" className="secondary-btn" onClick={()=>{setActiveApp(null);setCustomerSection(null)}}><ArrowLeft size={16}/> Back to Travel Operations</button>
+  <button type="button" className="secondary-btn" onClick={()=>{setActiveApp(null);setCustomerSection(null);setOpenedCompany(null)}}><ArrowLeft size={16}/> Back to Travel Operations</button>
   <div className="panel-head" style={{alignItems:'flex-start',marginTop:28}}>
    <div><span className="eyebrow">CUSTOMERS / ORGANIZATION</span><h2 style={{fontSize:28,marginTop:10}}>Customers - Organization</h2><p style={{marginTop:8}}>إدارة الشركات والعملاء الأفراد خارج الشركات.</p></div>
    <div className="metric-icon tone-blue"><Building2 size={27}/></div>
   </div>
   {customerSection ? <div className="panel" style={{marginTop:28,padding:24,minHeight:180}}>
-   <button type="button" className="secondary-btn" onClick={()=>{setCustomerSection(null);setShowCompanyForm(false)}}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
-   {customerSection==='companies' ? <>
-    <div className="panel-head" style={{marginTop:24,alignItems:'center',gap:16,flexWrap:'wrap'}}>
-     <div><h3 style={{fontSize:24}}>الشركات</h3><p style={{color:'var(--muted)',marginTop:6}}>دليل الشركات والمؤسسات المسجلة.</p></div>
-     <button type="button" className="primary-btn" onClick={()=>{setShowCompanyForm(true);setCompanyError('')}}><Plus size={17}/> إضافة شركة</button>
+   {openedCompany ? <>
+    <button type="button" className="secondary-btn" onClick={()=>{setOpenedCompany(null);setEmployees([]);setEmployeeFormOpen(false);setEmployeeError('')}}><ArrowLeft size={15}/> رجوع إلى الشركات</button>
+    <div style={{display:'flex',alignItems:'center',gap:22,flexWrap:'wrap',marginTop:26,padding:'24px 8px',borderBottom:'1px solid var(--border)'}}>
+     <div style={{width:112,height:112,borderRadius:18,background:'#fff',border:'1px solid var(--border)',display:'grid',placeItems:'center',padding:12,flexShrink:0}}>
+      {openedCompany.logo_url?<img src={openedCompany.logo_url} alt={'شعار '+openedCompany.name} style={{width:'100%',height:'100%',objectFit:'contain'}}/>:<Building2 size={48} color="var(--muted)"/>}
+     </div>
+     <div style={{flex:1,minWidth:220}}><span className="eyebrow">COMPANY PROFILE</span><h2 style={{fontSize:26,margin:'8px 0'}}>{openedCompany.name}</h2><p style={{color:'var(--muted)',margin:0}}>رقم الشركة: {openedCompany.company_number} · {openedCompany.location}</p></div>
+     <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(openedCompany)}><Settings2 size={16}/> تعديل بيانات الشركة</button>
     </div>
-    <div style={{display:'flex',alignItems:'center',gap:10,marginTop:22,padding:'0 14px',border:'1px solid var(--border)',borderRadius:12,background:'var(--surface)',minHeight:48}}>
-     <Search size={18} color="var(--muted)"/><input aria-label="بحث عن شركة" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} placeholder="ابحث باسم الشركة أو رقمها أو موقعها..." style={{border:0,outline:0,background:'transparent',width:'100%',color:'var(--text)',padding:'12px 0'}}/>
+    <div className="panel-head" style={{marginTop:26,alignItems:'center',gap:12,flexWrap:'wrap'}}>
+     <div><h3 style={{fontSize:22}}>موظفو الشركة</h3><p style={{color:'var(--muted)',marginTop:6}}>إضافة وإدارة بيانات الموظفين التابعين لهذه الشركة.</p></div>
+     <button type="button" className="primary-btn" onClick={()=>{setEmployeeError('');setEmployeeFormOpen(true)}}><Plus size={17}/> إضافة موظف</button>
     </div>
-    {companyNotice&&<div className="success-line" style={{marginTop:14}}>{companyNotice}</div>}
-    {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
-    {companiesLoading?<div className="loading-card" style={{marginTop:20}}>جارٍ تحميل الشركات...</div>:
-     filteredCompanies.length?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:16,marginTop:20}}>
-      {filteredCompanies.map(company=><article className="panel" key={company.id} style={{padding:20,display:'flex',flexDirection:'column',gap:12}}>
-       <div style={{display:'flex',alignItems:'center',gap:12}}>
-        {company.logo_url?<img src={company.logo_url} alt={'شعار '+company.name} style={{width:58,height:58,objectFit:'contain',borderRadius:12,border:'1px solid var(--border)',background:'#fff',padding:5}}/>:<div className="metric-icon tone-blue"><Building2 size={25}/></div>}
-        <div style={{minWidth:0}}><b style={{display:'block',fontSize:17,overflowWrap:'anywhere'}}>{company.name}</b><small style={{color:'var(--muted)'}}>رقم الشركة: {company.company_number}</small></div>
-       </div>
-       <div style={{display:'flex',alignItems:'flex-start',gap:8,color:'var(--muted)',fontSize:13}}><MapPin size={16}/><span>{company.location}</span></div>
+    {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
+    {employeesLoading?<div className="loading-card" style={{marginTop:18}}>جارٍ تحميل الموظفين...</div>:
+     employees.length?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:14,marginTop:18}}>
+      {employees.map(employee=><article key={employee.id} className="panel" style={{padding:18,display:'flex',flexDirection:'column',gap:8}}>
+       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}><div style={{minWidth:0}}><b style={{fontSize:16,display:'block',overflowWrap:'anywhere'}}>{employee.full_name}</b><span style={{color:'var(--muted)',fontSize:12}}>{employee.job_title||'المسمى الوظيفي غير محدد'}</span></div><button type="button" className="icon-btn" title="حذف الموظف" onClick={()=>void deleteEmployee(employee)}><Trash2 size={15}/></button></div>
+       {employee.employee_number&&<small style={{color:'var(--muted)'}}>الرقم الوظيفي: {employee.employee_number}</small>}
+       {employee.phone&&<small style={{color:'var(--muted)'}}>الهاتف: {employee.phone}</small>}
+       {employee.email&&<small style={{color:'var(--muted)'}}>البريد: {employee.email}</small>}
       </article>)}
-     </div>:<div className="empty-state" style={{marginTop:20,padding:28}}><Building2 size={28}/><b>{companySearch?'لا توجد نتائج مطابقة':'لا توجد شركات مسجلة بعد'}</b><span>{companySearch?'جرّب البحث باسم أو رقم أو موقع مختلف.':'اضغط على إضافة شركة حتى تسجل أول شركة في الدليل.'}</span></div>}
-    {showCompanyForm&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!companySaving)setShowCompanyForm(false)}}><form className="modal-card" onSubmit={saveCompany} style={{maxWidth:560}}>
-     <div className="modal-head"><div><span className="eyebrow">COMPANY DIRECTORY</span><h2>إضافة شركة</h2><p>أدخل بيانات الشركة وارفع شعارها إن توفر.</p></div><button type="button" className="icon-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}><X/></button></div>
-     <label>اسم الشركة<input value={companyName} onChange={e=>setCompanyName(e.target.value)} required maxLength={160} placeholder="اسم الشركة"/></label>
-     <label style={{marginTop:14}}>رقم الشركة<input value={companyNumber} onChange={e=>setCompanyNumber(e.target.value)} required maxLength={80} placeholder="رقم الشركة"/></label>
-     <label style={{marginTop:14}}>موقع الشركة<input value={companyLocation} onChange={e=>setCompanyLocation(e.target.value)} required maxLength={240} placeholder="المدينة أو العنوان"/></label>
-     <div style={{marginTop:16}}><label>لوكو الشركة <span style={{color:'var(--muted)',fontWeight:400}}>PNG / JPG / WEBP / SVG · حتى 5 MB</span></label><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>{const file=e.target.files?.[0]??null;if(file&&file.size>5*1024*1024){setCompanyError('حجم الشعار يجب ألا يتجاوز 5 MB.');e.currentTarget.value='';return}setCompanyError('');setCompanyLogo(file)}} disabled={companySaving}/>{companyLogoPreview&&<img src={companyLogoPreview} alt="معاينة شعار الشركة" style={{display:'block',width:100,height:100,objectFit:'contain',marginTop:12,border:'1px solid var(--border)',borderRadius:12,padding:8}}/>}</div>
-     {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
-     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}>إلغاء</button><button type="submit" className="primary-btn" disabled={companySaving}>{companySaving?'جارٍ الحفظ...':'حفظ الشركة'}<Plus size={16}/></button></div>
+     </div>:<div className="empty-state" style={{marginTop:18,padding:28}}><Users size={28}/><b>لا يوجد موظفون مسجلون</b><span>أضف أول موظف حتى تبدأ بإدارة فريق هذه الشركة.</span></div>}
+    {employeeFormOpen&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!employeeSaving)setEmployeeFormOpen(false)}}><form className="modal-card" onSubmit={addEmployee} style={{maxWidth:560}}>
+     <div className="modal-head"><div><span className="eyebrow">COMPANY EMPLOYEES</span><h2>إضافة موظف</h2><p>سيتم ربط الموظف تلقائياً بشركة {openedCompany.name}.</p></div><button type="button" className="icon-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}><X/></button></div>
+     <label>اسم الموظف<input value={employeeName} onChange={e=>setEmployeeName(e.target.value)} required maxLength={160} placeholder="الاسم الكامل"/></label>
+     <label style={{marginTop:14}}>الرقم الوظيفي<input value={employeeNumber} onChange={e=>setEmployeeNumber(e.target.value)} maxLength={80} placeholder="اختياري"/></label>
+     <label style={{marginTop:14}}>المسمى الوظيفي<input value={employeeTitle} onChange={e=>setEmployeeTitle(e.target.value)} maxLength={120} placeholder="مثلاً: مدير مبيعات"/></label>
+     <label style={{marginTop:14}}>رقم الهاتف<input value={employeePhone} onChange={e=>setEmployeePhone(e.target.value)} maxLength={50} placeholder="رقم التواصل"/></label>
+     <label style={{marginTop:14}}>البريد الإلكتروني<input type="email" value={employeeEmail} onChange={e=>setEmployeeEmail(e.target.value)} maxLength={160} placeholder="name@example.com"/></label>
+     {employeeError&&<div className="error-line" style={{marginTop:14}}>{employeeError}</div>}
+     <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setEmployeeFormOpen(false)} disabled={employeeSaving}>إلغاء</button><button type="submit" className="primary-btn" disabled={employeeSaving}>{employeeSaving?'جارٍ الحفظ...':'حفظ الموظف'}<Plus size={16}/></button></div>
     </form></div>}
    </> : <>
-    <h3 style={{fontSize:22,marginTop:22}}>العملاء خارج الشركات</h3>
-    <p style={{color:'var(--muted)',marginTop:8}}>قسم إدارة العملاء الأفراد غير المرتبطين بشركات.</p>
-    <div className="empty-state" style={{marginTop:24,padding:24}}><Users size={26}/><b>العملاء خارج الشركات</b><span>تم فتح القسم. يمكن إضافة سجلّات وبيانات العملاء في الخطوة التالية.</span></div>
+    <button type="button" className="secondary-btn" onClick={()=>{setCustomerSection(null);setShowCompanyForm(false)}}><ArrowLeft size={15}/> رجوع إلى الأقسام</button>
+    {customerSection==='companies' ? <>
+     <div className="panel-head" style={{marginTop:24,alignItems:'center',gap:16,flexWrap:'wrap'}}>
+      <div><h3 style={{fontSize:24}}>الشركات</h3><p style={{color:'var(--muted)',marginTop:6}}>دليل الشركات والمؤسسات المسجلة.</p></div>
+      <button type="button" className="primary-btn" onClick={()=>startCompanyForm(null)}><Plus size={17}/> إضافة شركة</button>
+     </div>
+     <div style={{display:'flex',alignItems:'center',gap:10,marginTop:22,padding:'0 14px',border:'1px solid var(--border)',borderRadius:12,background:'var(--surface)',minHeight:48}}>
+      <Search size={18} color="var(--muted)"/><input aria-label="بحث عن شركة" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} placeholder="ابحث باسم الشركة أو رقمها أو موقعها..." style={{border:0,outline:0,background:'transparent',width:'100%',color:'var(--text)',padding:'12px 0'}}/>
+     </div>
+     {companyNotice&&<div className="success-line" style={{marginTop:14}}>{companyNotice}</div>}
+     {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
+     {companiesLoading?<div className="loading-card" style={{marginTop:20}}>جارٍ تحميل الشركات...</div>:
+      filteredCompanies.length?<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:18,marginTop:22}}>
+       {filteredCompanies.map(company=><article className="company-directory-card" key={company.id}>
+        <div className="company-directory-logo">{company.logo_url?<img src={company.logo_url} alt={'شعار '+company.name}/>:<Building2 size={54} strokeWidth={1.35}/>}</div>
+        <h3 className="company-directory-name">{company.name}</h3>
+        <div className="company-directory-meta">رقم الشركة: {company.company_number}</div>
+        <div className="company-directory-meta"><MapPin size={14}/>{company.location}</div>
+        <div className="company-directory-actions">
+         <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(company)}><Settings2 size={15}/> تعديل البيانات</button>
+         <button type="button" className="primary-btn" onClick={()=>{setOpenedCompany(company);setEmployeeError('')}}>فتح الشركة <ArrowLeft size={15}/></button>
+        </div>
+       </article>)}
+      </div>:<div className="empty-state" style={{marginTop:20,padding:28}}><Building2 size={28}/><b>{companySearch?'لا توجد نتائج مطابقة':'لا توجد شركات مسجلة بعد'}</b><span>{companySearch?'جرّب البحث باسم أو رقم أو موقع مختلف.':'اضغط على إضافة شركة حتى تسجل أول شركة في الدليل.'}</span></div>}
+     {showCompanyForm&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!companySaving)setShowCompanyForm(false)}}><form className="modal-card" onSubmit={saveCompany} style={{maxWidth:560}}>
+      <div className="modal-head"><div><span className="eyebrow">COMPANY DIRECTORY</span><h2>{editingCompany?'تعديل بيانات الشركة':'إضافة شركة'}</h2><p>أدخل بيانات الشركة وارفع شعارها إن توفر.</p></div><button type="button" className="icon-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}><X/></button></div>
+      <label>اسم الشركة<input value={companyName} onChange={e=>setCompanyName(e.target.value)} required maxLength={160} placeholder="اسم الشركة"/></label>
+      <label style={{marginTop:14}}>رقم الشركة<input value={companyNumber} onChange={e=>setCompanyNumber(e.target.value)} required maxLength={80} placeholder="رقم الشركة"/></label>
+      <label style={{marginTop:14}}>موقع الشركة<input value={companyLocation} onChange={e=>setCompanyLocation(e.target.value)} required maxLength={240} placeholder="المدينة أو العنوان"/></label>
+      <div style={{marginTop:16}}><label>لوكو الشركة <span style={{color:'var(--muted)',fontWeight:400}}>PNG / JPG / WEBP / SVG · حتى 5 MB</span></label><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>{const file=e.target.files?.[0]??null;if(file&&file.size>5*1024*1024){setCompanyError('حجم الشعار يجب ألا يتجاوز 5 MB.');e.currentTarget.value='';return}setCompanyError('');setCompanyLogo(file)}} disabled={companySaving}/>{companyLogoPreview&&<img src={companyLogoPreview} alt="معاينة شعار الشركة" style={{display:'block',width:100,height:100,objectFit:'contain',marginTop:12,border:'1px solid var(--border)',borderRadius:12,padding:8}}/>}{!companyLogoPreview&&editingCompany?.logo_url&&<img src={editingCompany.logo_url} alt="شعار الشركة الحالي" style={{display:'block',width:100,height:100,objectFit:'contain',marginTop:12,border:'1px solid var(--border)',borderRadius:12,padding:8}}/>}</div>
+      {companyError&&<div className="error-line" style={{marginTop:14}}>{companyError}</div>}
+      <div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowCompanyForm(false)} disabled={companySaving}>إلغاء</button><button type="submit" className="primary-btn" disabled={companySaving}>{companySaving?'جارٍ الحفظ...':editingCompany?'حفظ التعديلات':'حفظ الشركة'}<Plus size={16}/></button></div>
+     </form></div>}
+    </> : <>
+     <h3 style={{fontSize:22,marginTop:22}}>العملاء خارج الشركات</h3>
+     <p style={{color:'var(--muted)',marginTop:8}}>قسم إدارة العملاء الأفراد غير المرتبطين بشركات.</p>
+     <div className="empty-state" style={{marginTop:24,padding:24}}><Users size={26}/><b>العملاء خارج الشركات</b><span>تم فتح القسم. يمكن إضافة سجلّات وبيانات العملاء في الخطوة التالية.</span></div>
+    </>}
    </>}
   </div> : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:18,marginTop:30}}>
    <button type="button" className="panel" onClick={()=>setCustomerSection('companies')} style={{textAlign:'start',padding:26,cursor:'pointer',minHeight:170,display:'flex',flexDirection:'column',alignItems:'flex-start',gap:14}}>
