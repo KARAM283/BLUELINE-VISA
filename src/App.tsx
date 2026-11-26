@@ -238,23 +238,23 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:(cr
   finally{setOcrBusy(false)}
  }
  async function submit(e:FormEvent){
-  e.preventDefault();if(!supabase)return;setBusy(true);setError('')
+  e.preventDefault();const client=supabase;if(!client)return;setBusy(true);setError('')
   const fullName=[firstName.trim(),lastName.trim()].filter(Boolean).join(' ')
   if(!fullName){setError('أدخل الاسم الأول واسم العائلة.');setBusy(false);return}
   const uploadFiles=[...(passportFile?[passportFile]:[]),...files]
   const invalid=uploadFiles.find(file=>file.size>20*1024*1024||!acceptedTypes.includes(file.type))
   if(invalid){setError(invalid.size>20*1024*1024?'الملف '+invalid.name+' يتجاوز 20 MB.':'نوع الملف '+invalid.name+' غير مدعوم. ارفع PDF أو صورة.');setBusy(false);return}
-  const result=await supabase.from('visa_cases').insert({created_by:userId,customer_full_name:fullName,customer_first_name:firstName.trim()||null,customer_last_name:lastName.trim()||null,customer_phone:phone.trim()||null,passport_number:passportNumber.trim()||null,nationality:nationality.trim()||null,passport_issue_date:passportIssueDate||null,date_of_birth:dateOfBirth||null,expire_date:expireDate||null,country_id:country,visa_type_id:visa,pipeline_id:pipeline}).select(CASE_COLUMNS).single()
+  const result=await client.from('visa_cases').insert({created_by:userId,customer_full_name:fullName,customer_first_name:firstName.trim()||null,customer_last_name:lastName.trim()||null,customer_phone:phone.trim()||null,passport_number:passportNumber.trim()||null,nationality:nationality.trim()||null,passport_issue_date:passportIssueDate||null,date_of_birth:dateOfBirth||null,expire_date:expireDate||null,country_id:country,visa_type_id:visa,pipeline_id:pipeline}).select(CASE_COLUMNS).single()
   if(result.error||!result.data){setError(result.error?.message||'تعذر إنشاء المعاملة');setBusy(false);return}
   const uploadItems=uploadFiles.map(file=>{const safeName=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^\\.+/,'').slice(-100)||'attachment';return {file,path:result.data.id+'/'+crypto.randomUUID()+'-'+safeName}})
   const uploadedPaths:string[]=[]
   try{
-   const uploadResults=await Promise.allSettled(uploadItems.map(async item=>{const uploaded=await supabase.storage.from('visa-case-documents').upload(item.path,item.file,{contentType:item.file.type,upsert:false});if(uploaded.error)throw new Error(item.file.name+': '+uploaded.error.message);uploadedPaths.push(item.path)}));const failedUpload=uploadResults.find(result=>result.status==='rejected');if(failedUpload?.status==='rejected')throw failedUpload.reason
-   if(uploadItems.length){const saved=await supabase.from('case_documents').insert(uploadItems.map(item=>({case_id:result.data.id,document_type_id:null,storage_path:item.path,original_filename:item.file.name,mime_type:item.file.type,uploaded_by:userId})));if(saved.error)throw saved.error}
+   const uploadResults=await Promise.allSettled(uploadItems.map(async item=>{const uploaded=await client.storage.from('visa-case-documents').upload(item.path,item.file,{contentType:item.file.type,upsert:false});if(uploaded.error)throw new Error(item.file.name+': '+uploaded.error.message);uploadedPaths.push(item.path)}));const failedUpload=uploadResults.find(result=>result.status==='rejected');if(failedUpload?.status==='rejected')throw failedUpload.reason
+   if(uploadItems.length){const saved=await client.from('case_documents').insert(uploadItems.map(item=>({case_id:result.data.id,document_type_id:null,storage_path:item.path,original_filename:item.file.name,mime_type:item.file.type,uploaded_by:userId})));if(saved.error)throw saved.error}
    setBusy(false);onCreated(result.data as VisaCase)
   }catch(err){
-   if(uploadedPaths.length)await supabase.storage.from('visa-case-documents').remove(uploadedPaths)
-   await supabase.from('visa_cases').delete().eq('id',result.data.id)
+   if(uploadedPaths.length)await client.storage.from('visa-case-documents').remove(uploadedPaths)
+   await client.from('visa_cases').delete().eq('id',result.data.id)
    setError('لم تكتمل عملية إنشاء المعاملة'+(err instanceof Error?': '+err.message:''));setBusy(false)
   }
  }
@@ -597,7 +597,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
    const payload={full_name:employeeName.trim(),job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null,parent_customer_id:customerFamilyParentId}
    let id=editingIndividualCustomer?.id
    if(editingIndividualCustomer){const result=await client.from('individual_customers').update(payload).eq('id',editingIndividualCustomer.id);if(result.error)throw result.error}
-   else{const result=await client.from('individual_customers').insert({...payload,created_by:session?.user.id??null}).select('id').single();if(result.error)throw result.error;id=result.data.id}
+   else{const result=await client.from('individual_customers').insert({...payload,created_by:(await client.auth.getUser()).data.user?.id??null}).select('id').single();if(result.error)throw result.error;id=result.data.id}
    if(!id)throw new Error('Customer record was not created')
    let passportPath:string|null=null,photoPath:string|null=null
    const tasks:Promise<void>[]=[]
