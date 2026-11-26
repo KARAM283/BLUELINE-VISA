@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus, RefreshCw, Search, ShieldCheck, UserRound, UserX, Users } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import type { AppRole } from './types'
+import type { CSSProperties, FormEvent } from 'react'
 
 type EmployeeUser = { id:string; email:string; full_name:string; is_active:boolean; roles:string[]; created_at:string }
 const roleLabel:Record<string,string>={admin:'مدير النظام',manager:'مدير',employee:'موظف'}
@@ -26,9 +27,9 @@ export default function EmployeesPanel({currentUserId}:{currentUserId:string}) {
   async function load(){setBusy(true);setError('');try{const data=await invoke({action:'list'});setUsers(data.users||[])}catch(e){setError(e instanceof Error?e.message:'تعذر تحميل الحسابات')}finally{setBusy(false)}}
   useEffect(()=>{void load()},[])
   const filtered=useMemo(()=>users.filter(u=>[u.full_name,u.email,...u.roles].join(' ').toLowerCase().includes(search.toLowerCase())),[users,search])
-  async function create(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');setNotice('');try{await invoke({action:'create',full_name:name,email,password,role});setName('');setEmail('');setPassword('');setRole('employee');setShowCreate(false);setNotice('تم إنشاء حساب الموظف بنجاح');await load()}catch(e){setError(e instanceof Error?e.message:'تعذر إنشاء الحساب')}finally{setBusy(false)}}
+  async function create(e:FormEvent){e.preventDefault();setBusy(true);setError('');setNotice('');try{await invoke({action:'create',full_name:name,email,password,role});setName('');setEmail('');setPassword('');setRole('employee');setShowCreate(false);setNotice('تم إنشاء حساب الموظف بنجاح');await load()}catch(e){setError(e instanceof Error?e.message:'تعذر إنشاء الحساب')}finally{setBusy(false)}}
   async function update(user:EmployeeUser,patch:Record<string,unknown>){setBusy(true);setError('');setNotice('');try{await invoke({action:'update',user_id:user.id,...patch});setNotice('تم تحديث بيانات الحساب');await load()}catch(e){setError(e instanceof Error?e.message:'تعذر تحديث الحساب')}finally{setBusy(false)}}
-  const field:React.CSSProperties={width:'100%',minWidth:0,border:'1px solid #dce3ed',borderRadius:9,padding:'11px 12px',background:'#fbfcfe',color:'#24334a',font:'inherit',fontSize:12}
+  const field:CSSProperties={width:'100%',minWidth:0,border:'1px solid #dce3ed',borderRadius:9,padding:'11px 12px',background:'#fbfcfe',color:'#24334a',font:'inherit',fontSize:12}
   const button:React.CSSProperties={border:0,borderRadius:9,padding:'10px 13px',background:'#172943',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:7}
   const card:React.CSSProperties={background:'#fff',border:'1px solid #e8edf4',borderRadius:15,padding:18,marginBottom:15}
   return <div style={{maxWidth:1200,margin:'0 auto'}}>
