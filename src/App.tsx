@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { FormEvent, ReactNode } from 'react'
-import { Activity, ArrowLeft, ArrowUpRight, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, FileText, FileImage, Upload, ExternalLink, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Trash2, Users, WalletCards, X, Plane, Trees, Luggage, Compass, MapPin, Globe2, Building2 } from 'lucide-react'
+import { Activity, ArrowLeft, ArrowUpRight, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, FileText, FileImage, Upload, ExternalLink, LayoutDashboard, LogOut, Menu, Plus, Search, Settings2, ShieldCheck, Trash2, Users, WalletCards, X, Plane, Trees, Luggage, Compass, MapPin, Globe2, Building2, MessageCircle } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppRole, Profile, VisaCase } from './types'
