@@ -630,3 +630,23 @@ td small{font-size:11px}
 .individual-customer-card-actions .secondary-btn{flex:1;justify-content:center;min-height:38px;font-size:12px}
 .individual-customer-card-actions .icon-btn{width:38px;height:38px;flex:0 0 38px;border:1px solid #e8edf3;border-radius:10px;color:#8190a2}
 @media(max-width:680px){.individual-customer-card:not(.compact){flex-direction:column;align-items:stretch;min-height:0}.individual-customer-card:not(.compact) .individual-customer-card-actions{width:100%;justify-content:stretch}.individual-customer-card-main{gap:12px}.individual-customer-card:not(.compact) .individual-customer-card-photo{width:60px;height:60px;flex-basis:60px}}
+
+
+/* Fast, lightweight page and interaction motion */
+.page-content{animation:bl-page-in .32s cubic-bezier(.2,.75,.25,1) both;will-change:opacity,transform}
+.page-content>.metrics-grid,.page-content>.content-grid,.page-content>.panel,.page-content>.loading-card{animation:bl-section-in .38s cubic-bezier(.2,.75,.25,1) both}
+.sidebar{transition:transform .28s cubic-bezier(.2,.75,.25,1),box-shadow .28s ease}
+.nav-item{transition:background-color .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
+.panel,.metric-card,.company-directory-card,.employee-directory-card,.individual-customer-card,.pipeline-case-card{transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.modal-backdrop{animation:bl-fade-in .18s ease both}
+.modal-card{animation:bl-modal-in .24s cubic-bezier(.2,.8,.25,1) both;transform-origin:center}
+.individual-customer-card:nth-child(-n+6),.company-directory-card:nth-child(-n+6),.employee-directory-card:nth-child(-n+6),.pipeline-case-card:nth-child(-n+8){animation:bl-card-in .3s cubic-bezier(.2,.75,.25,1) both}
+.individual-customer-card:nth-child(2),.company-directory-card:nth-child(2),.employee-directory-card:nth-child(2),.pipeline-case-card:nth-child(2){animation-delay:.035s}
+.individual-customer-card:nth-child(3),.company-directory-card:nth-child(3),.employee-directory-card:nth-child(3),.pipeline-case-card:nth-child(3){animation-delay:.07s}
+.individual-customer-card:nth-child(4),.company-directory-card:nth-child(4),.employee-directory-card:nth-child(4),.pipeline-case-card:nth-child(4){animation-delay:.105s}
+@keyframes bl-page-in{from{opacity:.65}to{opacity:1}}
+@keyframes bl-section-in{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bl-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes bl-modal-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes bl-card-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.page-content,.page-content>*,.modal-backdrop,.modal-card,.individual-customer-card,.company-directory-card,.employee-directory-card,.pipeline-case-card{animation:none!important;transition:none!important;will-change:auto}}
