@@ -421,3 +421,13 @@ td small{font-size:11px}
 /* Login layout refinement: remove the logo space and raise the sign-in panel. */
 .auth-card{justify-content:flex-start;padding-top:clamp(28px,7vh,76px)}
 .auth-copy{margin-top:18px}
+
+.company-directory-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:340px;box-shadow:0 5px 18px #17294308;transition:transform .18s ease,box-shadow .18s ease}
+.company-directory-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px #17294312}
+.company-directory-logo{width:100%;height:158px;display:grid;place-items:center;color:#a4adba;background:linear-gradient(180deg,#f8fafc,#fff);border:1px solid #edf0f4;border-radius:13px;padding:18px}
+.company-directory-logo img{width:100%;height:100%;object-fit:contain}
+.company-directory-name{font-size:19px;line-height:1.5;text-align:center;margin:14px 0 5px;color:var(--text);overflow-wrap:anywhere}
+.company-directory-meta{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;line-height:1.6;margin-top:4px}
+.company-directory-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:auto;padding-top:18px}
+.company-directory-actions button{font-size:11px;padding:10px 8px;white-space:nowrap}
+@media(max-width:520px){.company-directory-card{min-height:320px}.company-directory-logo{height:140px}.company-directory-actions{grid-template-columns:1fr}}
