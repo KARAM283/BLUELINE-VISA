@@ -958,3 +958,14 @@ body:has(.modal-backdrop){
   .modal-backdrop>.modal-card>.modal-actions{justify-content:stretch}
   .modal-backdrop>.modal-card>.modal-actions button{flex:1}
 }
+
+
+/* Confirmation prompts use the same full-screen modal shell */
+.modal-backdrop>.global-confirm-modal{justify-content:center!important}
+.modal-backdrop>.global-confirm-modal>.modal-head,
+.modal-backdrop>.global-confirm-modal>.modal-actions{
+  width:min(100%,620px)!important;
+  max-width:620px!important;
+}
+.modal-backdrop>.global-confirm-modal>.modal-head{padding-right:64px!important}
+.modal-backdrop>.global-confirm-modal>.modal-actions{margin-top:22px!important}
