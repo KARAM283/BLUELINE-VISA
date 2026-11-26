@@ -167,7 +167,7 @@ function PipelineBoard({pipelines,rows,query,onQueryChange,canManage,onCreate,on
   }
   async function removePipeline(pipelineId:string,pipelineName:string){
     if(!canManage)return
-    if(!window.confirm(`تأكيد حذف Pipeline "${pipelineName}"؟ لا يمكن حذفها إذا تحتوي على معاملات.`))return
+    if(!(await appConfirm(`تأكيد حذف Pipeline "${pipelineName}"؟ لا يمكن حذفها إذا تحتوي على معاملات.`)))return
     setLocalError('')
     try{await onDelete(pipelineId)}catch(err){setLocalError(err instanceof Error?err.message:'تعذر حذف Pipeline')}
   }
