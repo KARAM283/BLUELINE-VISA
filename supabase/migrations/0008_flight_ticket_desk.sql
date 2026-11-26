@@ -38,3 +38,24 @@ values ('flight-tickets','flight-tickets',false,10485760,array['application/pdf'
 on conflict(id) do update set public=false,file_size_limit=10485760,allowed_mime_types=excluded.allowed_mime_types;
 drop policy if exists "Authenticated staff access flight ticket files" on storage.objects;
 create policy "Authenticated staff access flight ticket files" on storage.objects for all to authenticated using(bucket_id='flight-tickets') with check(bucket_id='flight-tickets');
+
+create or replace function public.enforce_flight_ticket_pipeline_company()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare pipeline_company text;
+begin
+  select p.company_key into pipeline_company
+  from public.flight_pipelines p
+  where p.id = new.pipeline_id;
+  if pipeline_company is null or pipeline_company <> new.company_key then
+    raise exception 'Flight ticket company must match its pipeline';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists flight_ticket_pipeline_company_guard on public.flight_tickets;
+create trigger flight_ticket_pipeline_company_guard
+before insert or update of company_key, pipeline_id on public.flight_tickets
+for each row execute function public.enforce_flight_ticket_pipeline_company();
