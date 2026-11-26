@@ -76,9 +76,7 @@ export default function App() {
     setError('')
     const { data, error: createError } = await supabase.rpc('create_visa_pipeline', { p_name: name })
     if (createError) { setError(createError.message); throw createError }
-    const { data: pipelineRows, error: pipelineError } = await supabase.from('visa_pipelines').select('id,name').eq('is_active', true).order('created_at')
-    if (pipelineError) { setError(pipelineError.message); throw pipelineError }
-    setPipelines(pipelineRows ?? [])
+    setPipelines(current => [...current, { id: data as string, name }])
     return data as string
   }
 
@@ -137,7 +135,7 @@ export default function App() {
     <aside className={`sidebar ${mobileNav?'sidebar-open':''}`}><Brand/><div className="workspace"><span className="workspace-dot"/><div><b>Blue Line Travel</b><small>Visa Operations</small></div><ChevronDown size={15}/></div><div className="nav-label">القائمة الرئيسية</div><button className={view==='overview'?'nav-item active':'nav-item'} onClick={()=>{setView('overview');setMobileNav(false)}}><LayoutDashboard size={18}/>نظرة عامة</button><button className={view==='cases'?'nav-item active':'nav-item'} onClick={()=>{setView('cases');setMobileNav(false)}}><BriefcaseBusiness size={18}/>VISA<span className="nav-count">{cases.length}</span></button><button className={view==='documents'?'nav-item active':'nav-item'} onClick={()=>{setView('documents');setMobileNav(false)}}><FileText size={18}/>الوثائق</button><button className={view==='travel-operations'?'nav-item active':'nav-item'} onClick={()=>{setView('travel-operations');setMobileNav(false)}}><Plane size={18}/>Travel Operations</button><div className="nav-label nav-label-spaced">الإدارة</div><div className="nav-item muted"><Users size={18}/>الموظفون</div><div className="nav-item muted"><WalletCards size={18}/>الحسابات</div>{(role==='manager'||role==='admin') && <button className={view==='settings'?'nav-item active':'nav-item'} onClick={()=>{setView('settings');setMobileNav(false)}}><Settings2 size={18}/>إعدادات النظام</button>}<div className="sidebar-bottom"><div className="profile-chip"><div className="avatar">{displayName.slice(0,1)}</div><div><b>{displayName}</b><small>{role==='admin'?'مدير النظام':role==='manager'?'مدير':'موظف'}</small></div><button onClick={signOut} title="تسجيل الخروج"><LogOut size={17}/></button></div><small className="version">BLUE LINE / INTERNAL SYSTEM</small></div></aside>
     {mobileNav && <button className="scrim" onClick={()=>setMobileNav(false)} aria-label="إغلاق القائمة"/>}
     <main className="main-area"><header className="topbar"><button className="icon-btn mobile-menu" onClick={()=>setMobileNav(true)}><Menu/></button><div className="breadcrumb">العمليات <span>/</span> {view==='overview'?'نظرة عامة':view==='travel-operations'?'Travel Operations':view==='documents'?'الوثائق':view==='settings'?'إعدادات النظام':'المعاملات'}</div><div className="top-actions"><button className="language-toggle" onClick={toggleLanguage} type="button" aria-label="Switch language">{isEnglish ? 'العربية' : 'English'}</button><span className="today">{new Intl.DateTimeFormat(isEnglish ? 'en-GB' : 'ar-IQ',{dateStyle:'full'}).format(new Date())}</span><button className="icon-btn" title="الإشعارات"><Bell size={18}/><i/></button><div className="top-avatar">{displayName.slice(0,1)}</div></div></header>
-      <div className="page-content">
+      <div className="page-content" key={view}>
       {error && <div className="error-banner"><CircleAlert size={17}/>{error}</div>}
       {loading ? <div className="loading-card">جارٍ تحميل بيانات النظام...</div> : <>
         {view==='overview' && <section className="metrics-grid"><Metric icon={<BriefcaseBusiness/>} label="إجمالي المعاملات" value={cases.length} note="كل الملفات المسجلة" tone="blue"/><Metric icon={<Activity/>} label="قيد الإجراء" value={openCases.length} note="معاملات مفتوحة حالياً" tone="violet"/><Metric icon={<CalendarClock/>} label="متجاوزة الموعد" value={overdue} note="تحتاج إلى متابعة" tone="orange"/><Metric icon={<CheckCircle2/>} label="مكتملة" value={cases.filter(c=>c.status==='completed').length} note="تم إنهاء إجراءاتها" tone="green"/></section>}
@@ -145,8 +143,8 @@ export default function App() {
       </>}
       <footer className="page-footer"><span>Blue Line Travel</span><span>نظام متابعة معاملات التأشيرات · إصدار أولي</span></footer></div>
     </main>
-    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} canDelete={role==='manager'||role==='admin'} onClose={()=>setSelectedCase(null)} onDeleted={async()=>{setSelectedCase(null);const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} onUpdated={async()=>{const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}}/>}
-    {showNew && <NewCaseModal onClose={()=>setShowNew(false)} onCreated={async()=>{setShowNew(false);const {data}=await supabase!.from('visa_cases').select(CASE_COLUMNS).order('created_at',{ascending:false}).limit(100);setCases((data??[]) as VisaCase[])}} userId={session.user.id}/>}
+    {selectedCase && <CaseDetailsModal item={selectedCase} userId={session.user.id} canDelete={role==='manager'||role==='admin'} onClose={()=>setSelectedCase(null)} onDeleted={()=>{setSelectedCase(null);setCases(current=>current.filter(row=>row.id!==selectedCase.id))}} onUpdated={()=>{}}/>}
+    {showNew && <NewCaseModal onClose={()=>setShowNew(false)} onCreated={created=>{setShowNew(false);if(created)setCases(current=>[created,...current.filter(row=>row.id!==created.id)].slice(0,100))}} userId={session.user.id}/>}
   </div>
 }
 
@@ -202,7 +200,7 @@ function PipelineBoard({pipelines,rows,query,onQueryChange,canManage,onCreate,on
 }
 
 function CaseTable({rows}:{rows:VisaCase[]}){if(!rows.length)return <div className="empty-state"><FileText size={25}/><b>ماكو معاملات لحد الآن</b><span>أنشئ أول معاملة حتى تبدأ المتابعة.</span></div>;return <div className="table-wrap"><table><thead><tr><th>رقم المعاملة</th><th>اسم العميل</th><th>الأولوية</th><th>الحالة</th><th>تاريخ الإنشاء</th></tr></thead><tbody>{rows.map(c=><tr key={c.id}><td className="case-id">{c.case_number||'—'}</td><td><b>{c.customer_full_name}</b><small>{c.customer_phone||'بدون رقم'}</small></td><td><span className={`priority priority-${c.priority}`}>{c.priority==='urgent'?'عاجل':c.priority==='high'?'مرتفع':c.priority==='low'?'منخفض':'اعتيادي'}</span></td><td><span className={`status status-${c.status}`}>{c.status==='completed'?'مكتملة':c.status==='on_hold'?'معلقة':c.status==='cancelled'?'ملغاة':'قيد الإجراء'}</span></td><td>{new Intl.DateTimeFormat('en-GB').format(new Date(c.created_at))}</td></tr>)}</tbody></table></div>}
-function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=>void;userId:string}){
+function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:(created?:VisaCase)=>void;userId:string}){
  const { isEnglish } = useLanguage()
  const [firstName,setFirstName]=useState('');const [lastName,setLastName]=useState('');const [passportNumber,setPassportNumber]=useState('');const [nationality,setNationality]=useState('');const [passportIssueDate,setPassportIssueDate]=useState('');const [phone,setPhone]=useState('');const [dateOfBirth,setDateOfBirth]=useState('');const [expireDate,setExpireDate]=useState('');const [country,setCountry]=useState('');const [visa,setVisa]=useState('');const [pipeline,setPipeline]=useState('');const [passportFile,setPassportFile]=useState<File|null>(null);const [files,setFiles]=useState<File[]>([]);const [busy,setBusy]=useState(false);const [ocrBusy,setOcrBusy]=useState(false);const [dragging,setDragging]=useState(false);const [ocrNote,setOcrNote]=useState('');const [error,setError]=useState('');
  const [countries,setCountries]=useState<{id:string;name:string}[]>([]);const [visas,setVisas]=useState<{id:string;name:string;country_id:string}[]>([]);const [pipelines,setPipelines]=useState<{id:string;name:string}[]>([])
@@ -243,19 +241,22 @@ function NewCaseModal({onClose,onCreated,userId}:{onClose:()=>void;onCreated:()=
   e.preventDefault();if(!supabase)return;setBusy(true);setError('')
   const fullName=[firstName.trim(),lastName.trim()].filter(Boolean).join(' ')
   if(!fullName){setError('أدخل الاسم الأول واسم العائلة.');setBusy(false);return}
-  const result=await supabase.from('visa_cases').insert({created_by:userId,customer_full_name:fullName,customer_first_name:firstName.trim()||null,customer_last_name:lastName.trim()||null,customer_phone:phone.trim()||null,passport_number:passportNumber.trim()||null,nationality:nationality.trim()||null,passport_issue_date:passportIssueDate||null,date_of_birth:dateOfBirth||null,expire_date:expireDate||null,country_id:country,visa_type_id:visa,pipeline_id:pipeline}).select('id').single()
+  const uploadFiles=[...(passportFile?[passportFile]:[]),...files]
+  const invalid=uploadFiles.find(file=>file.size>20*1024*1024||!acceptedTypes.includes(file.type))
+  if(invalid){setError(invalid.size>20*1024*1024?'الملف '+invalid.name+' يتجاوز 20 MB.':'نوع الملف '+invalid.name+' غير مدعوم. ارفع PDF أو صورة.');setBusy(false);return}
+  const result=await supabase.from('visa_cases').insert({created_by:userId,customer_full_name:fullName,customer_first_name:firstName.trim()||null,customer_last_name:lastName.trim()||null,customer_phone:phone.trim()||null,passport_number:passportNumber.trim()||null,nationality:nationality.trim()||null,passport_issue_date:passportIssueDate||null,date_of_birth:dateOfBirth||null,expire_date:expireDate||null,country_id:country,visa_type_id:visa,pipeline_id:pipeline}).select(CASE_COLUMNS).single()
   if(result.error||!result.data){setError(result.error?.message||'تعذر إنشاء المعاملة');setBusy(false);return}
-  for(const file of [...(passportFile?[passportFile]:[]),...files]){
-   if(file.size>20*1024*1024){setError('الملف '+file.name+' يتجاوز 20 MB.');setBusy(false);onCreated();return}
-   if(!acceptedTypes.includes(file.type)){setError('نوع الملف '+file.name+' غير مدعوم. ارفع PDF أو صورة.');setBusy(false);onCreated();return}
-   const safeName=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^\.+/,'').slice(-100)||'attachment'
-   const path=result.data.id+'/'+crypto.randomUUID()+'-'+safeName
-   const uploaded=await supabase.storage.from('visa-case-documents').upload(path,file,{contentType:file.type,upsert:false})
-   if(uploaded.error){setError('تم إنشاء المعاملة، لكن تعذر رفع '+file.name+': '+uploaded.error.message);setBusy(false);onCreated();return}
-   const saved=await supabase.from('case_documents').insert({case_id:result.data.id,document_type_id:null,storage_path:path,original_filename:file.name,mime_type:file.type,uploaded_by:userId})
-   if(saved.error){await supabase.storage.from('visa-case-documents').remove([path]);setError('تعذر تسجيل المرفق '+file.name+': '+saved.error.message);setBusy(false);onCreated();return}
+  const uploadItems=uploadFiles.map(file=>{const safeName=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^\\.+/,'').slice(-100)||'attachment';return {file,path:result.data.id+'/'+crypto.randomUUID()+'-'+safeName}})
+  const uploadedPaths:string[]=[]
+  try{
+   await Promise.all(uploadItems.map(async item=>{const uploaded=await supabase.storage.from('visa-case-documents').upload(item.path,item.file,{contentType:item.file.type,upsert:false});if(uploaded.error)throw new Error(item.file.name+': '+uploaded.error.message);uploadedPaths.push(item.path)}))
+   if(uploadItems.length){const saved=await supabase.from('case_documents').insert(uploadItems.map(item=>({case_id:result.data.id,document_type_id:null,storage_path:item.path,original_filename:item.file.name,mime_type:item.file.type,uploaded_by:userId})));if(saved.error)throw saved.error}
+   setBusy(false);onCreated(result.data as VisaCase)
+  }catch(err){
+   if(uploadedPaths.length)await supabase.storage.from('visa-case-documents').remove(uploadedPaths)
+   await supabase.from('visa_cases').delete().eq('id',result.data.id)
+   setError('لم تكتمل عملية إنشاء المعاملة'+(err instanceof Error?': '+err.message:''));setBusy(false)
   }
-  setBusy(false);onCreated()
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy&&!ocrBusy)onClose()}}><form className="modal-card case-create-modal" onSubmit={submit}>
  <div className="modal-head"><div><span className="eyebrow">NEW APPLICATION</span><h2>إنشاء معاملة جديدة</h2><p>{isEnglish ? 'Upload a passport image or PDF and Gemini will extract the details automatically. Review the image and extracted information before saving.' : 'ارفع صورة الجواز أو PDF وسيقرأ Gemini البيانات تلقائياً. راجع الصورة والبيانات قبل الحفظ.'}</p></div><button type="button" className="icon-btn" onClick={onClose} disabled={busy||ocrBusy}><X/></button></div>
