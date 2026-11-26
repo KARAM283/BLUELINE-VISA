@@ -582,6 +582,75 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
   setEmployees(current=>current.filter(item=>item.id!==employee.id))
  }
 
+
+ function startIndividualCustomerForm(customer:IndividualCustomerDisplay|null,parentId:string|null=null){
+  setEditingIndividualCustomer(customer);setCustomerFamilyParentId(parentId??customer?.parent_customer_id??null)
+  setEmployeeName(customer?.full_name??'');setEmployeeTitle(customer?.job_title??'');setEmployeeDepartment(customer?.department??'');setEmployeePhone(customer?.phone??'');setEmployeeBirth(customer?.date_of_birth??'');setEmployeeNationality(customer?.nationality??'');setEmployeePassportNumber(customer?.passport_number??'');setEmployeePassportIssue(customer?.passport_issue_date??'');setEmployeePassportExpiry(customer?.passport_expiry_date??'')
+  setEmployeePassport(null);setEmployeeProfilePhoto(null);setNewEmployeeAttachments([]);setEmployeeAttachments([]);setEmployeeError('');setCustomerFormOpen(true)
+ }
+ async function saveIndividualCustomer(e:FormEvent){
+  e.preventDefault();const client=supabase;if(!client||employeeSaving||employeeOcrBusy)return
+  if(!employeeName.trim()){setEmployeeError(isEnglish?'Enter the customer name.':'أدخل اسم العميل.');return}
+  setEmployeeSaving(true);setEmployeeError('');const uploaded:string[]=[]
+  try{
+   const payload={full_name:employeeName.trim(),job_title:employeeTitle.trim()||null,department:employeeDepartment.trim()||null,phone:employeePhone.trim()||null,date_of_birth:employeeBirth||null,nationality:employeeNationality.trim()||null,passport_number:employeePassportNumber.trim()||null,passport_issue_date:employeePassportIssue||null,passport_expiry_date:employeePassportExpiry||null,parent_customer_id:customerFamilyParentId}
+   let id=editingIndividualCustomer?.id
+   if(editingIndividualCustomer){const result=await client.from('individual_customers').update(payload).eq('id',editingIndividualCustomer.id);if(result.error)throw result.error}
+   else{const result=await client.from('individual_customers').insert({...payload,created_by:(await client.auth.getUser()).data.user?.id??null}).select('id').single();if(result.error)throw result.error;id=result.data.id}
+   if(!id)throw new Error('Customer record was not created')
+   let passportPath:string|null=null,photoPath:string|null=null
+   const tasks:Promise<void>[]=[]
+   if(employeePassport){const ext=employeePassport.name.split('.').pop()?.toLowerCase()||'jpg';passportPath='individuals/'+id+'/passport/'+crypto.randomUUID()+'.'+ext;const path=passportPath;tasks.push((async()=>{const r=await client.storage.from('employee-passports').upload(path,employeePassport,{contentType:employeePassport.type,upsert:false});if(r.error)throw r.error;uploaded.push(path)})())}
+   if(employeeProfilePhoto){photoPath='individuals/'+id+'/profile/'+crypto.randomUUID()+'.jpg';const path=photoPath;tasks.push((async()=>{const r=await client.storage.from('employee-passports').upload(path,employeeProfilePhoto,{contentType:employeeProfilePhoto.type,upsert:false});if(r.error)throw r.error;uploaded.push(path)})())}
+   const attachments=newEmployeeAttachments.map(file=>({file,path:'individuals/'+id+'/attachments/'+crypto.randomUUID()+'.'+(file.name.split('.').pop()?.toLowerCase()||'bin')}))
+   for(const item of attachments)tasks.push((async()=>{const r=await client.storage.from('employee-passports').upload(item.path,item.file,{contentType:item.file.type||'application/octet-stream',upsert:false});if(r.error)throw r.error;uploaded.push(item.path)})())
+   const results=await Promise.allSettled(tasks);const failed=results.find(x=>x.status==='rejected');if(failed?.status==='rejected')throw failed.reason
+   const updates:Promise<void>[]=[]
+   if(passportPath)updates.push((async()=>{const r=await client.from('individual_customers').update({passport_path:passportPath}).eq('id',id);if(r.error)throw r.error})())
+   if(photoPath)updates.push((async()=>{const r=await client.from('individual_customers').update({profile_photo_path:photoPath}).eq('id',id);if(r.error)throw r.error})())
+   if(attachments.length)updates.push((async()=>{const r=await client.from('individual_customer_attachments').insert(attachments.map(x=>({customer_id:id,file_name:x.file.name,file_path:x.path,mime_type:x.file.type||null,file_size:x.file.size})));if(r.error)throw r.error})())
+   await Promise.all(updates)
+   if(passportPath&&editingIndividualCustomer?.passport_path)void client.storage.from('employee-passports').remove([editingIndividualCustomer.passport_path])
+   if(photoPath&&editingIndividualCustomer?.profile_photo_path)void client.storage.from('employee-passports').remove([editingIndividualCustomer.profile_photo_path])
+   const [p,ph]=await Promise.all([passportPath?client.storage.from('employee-passports').createSignedUrl(passportPath,3600):Promise.resolve({data:null}),photoPath?client.storage.from('employee-passports').createSignedUrl(photoPath,3600):Promise.resolve({data:null})])
+   const saved:IndividualCustomerDisplay={...(editingIndividualCustomer??{} as IndividualCustomerDisplay),id,...payload,passport_path:passportPath??editingIndividualCustomer?.passport_path??null,profile_photo_path:photoPath??editingIndividualCustomer?.profile_photo_path??null,source_employee_id:editingIndividualCustomer?.source_employee_id??null,created_at:editingIndividualCustomer?.created_at??new Date().toISOString(),passport_url:p.data?.signedUrl??editingIndividualCustomer?.passport_url??null,profile_photo_url:ph.data?.signedUrl??(employeeProfilePhotoPreview||editingIndividualCustomer?.profile_photo_url||null)}
+   setIndividualCustomers(current=>[...current.filter(x=>x.id!==id),saved].sort((a,b)=>a.full_name.localeCompare(b.full_name)))
+   if(selectedIndividualCustomer?.id===id)setSelectedIndividualCustomer(saved)
+   setCustomerFormOpen(false);setEditingIndividualCustomer(null);setEmployeePassport(null);setEmployeeProfilePhoto(null);setNewEmployeeAttachments([]);setEmployeeAttachments([])
+  }catch(err){if(uploaded.length)await client.storage.from('employee-passports').remove(uploaded);setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not save customer':'تعذر حفظ العميل'))}
+  finally{setEmployeeSaving(false)}
+ }
+ async function deleteIndividualCustomer(customer:IndividualCustomerDisplay){
+  const client=supabase;if(!client||!window.confirm(isEnglish?'Delete this customer profile?':'تأكيد حذف ملف العميل؟'))return
+  const {data:files}=await client.from('individual_customer_attachments').select('file_path').eq('customer_id',customer.id)
+  const removed=await client.from('individual_customers').delete().eq('id',customer.id);if(removed.error){setEmployeeError(removed.error.message);return}
+  const paths=[customer.passport_path,customer.profile_photo_path,...(files??[]).map((x:any)=>x.file_path)].filter((x):x is string=>!!x);if(paths.length)await client.storage.from('employee-passports').remove(paths)
+  setIndividualCustomers(current=>current.filter(x=>x.id!==customer.id&&x.parent_customer_id!==customer.id));if(selectedIndividualCustomer?.id===customer.id)setSelectedIndividualCustomer(null)
+ }
+ async function createCustomerFromEmployee(employee:EmployeeDisplay){
+  const client=supabase;if(!client||customerProfileBusy)return;setCustomerProfileBusy(true);setEmployeeError('')
+  try{
+   const existing=await client.from('individual_customers').select('*').eq('source_employee_id',employee.id).maybeSingle();if(existing.error)throw existing.error
+   let customer=existing.data as IndividualCustomer|null
+   if(!customer){
+    const created=await client.from('individual_customers').insert({full_name:employee.full_name,job_title:employee.job_title,department:employee.department,phone:employee.phone,date_of_birth:employee.date_of_birth,nationality:employee.nationality,passport_number:employee.passport_number,passport_issue_date:employee.passport_issue_date,passport_expiry_date:employee.passport_expiry_date,source_employee_id:employee.id,created_by:(await client.auth.getUser()).data.user?.id??null}).select('*').single()
+    if(created.error)throw created.error;customer=created.data as IndividualCustomer
+    const copyFile=async(path:string|null,folder:string)=>{if(!path)return null;const ext=path.split('.').pop()||'bin';const target='individuals/'+customer!.id+'/'+folder+'/'+crypto.randomUUID()+'.'+ext;const dl=await client.storage.from('employee-passports').download(path);if(dl.error)throw dl.error;const up=await client.storage.from('employee-passports').upload(target,dl.data,{upsert:false});if(up.error)throw up.error;return target}
+    const [passportPath,photoPath]=await Promise.all([copyFile(employee.passport_path,'passport'),copyFile(employee.profile_photo_path,'profile')])
+    const update=await client.from('individual_customers').update({passport_path:passportPath,profile_photo_path:photoPath}).eq('id',customer.id);if(update.error)throw update.error
+    const {data:employeeFiles}=await client.from('company_employee_attachments').select('*').eq('employee_id',employee.id)
+    if(employeeFiles?.length){const cloned=await Promise.all(employeeFiles.map(async f=>{const path=await copyFile(f.file_path,'attachments');return {customer_id:customer!.id,file_name:f.file_name,file_path:path!,mime_type:f.mime_type,file_size:f.file_size}}));const saved=await client.from('individual_customer_attachments').insert(cloned);if(saved.error)throw saved.error}
+   }
+   const refreshed=await client.from('individual_customers').select('*').eq('id',customer.id).single();if(refreshed.error)throw refreshed.error
+   const row=refreshed.data as IndividualCustomer
+   const [p,ph]=await Promise.all([row.passport_path?client.storage.from('employee-passports').createSignedUrl(row.passport_path,3600):Promise.resolve({data:null}),row.profile_photo_path?client.storage.from('employee-passports').createSignedUrl(row.profile_photo_path,3600):Promise.resolve({data:null})])
+   const display={...row,passport_url:p.data?.signedUrl??null,profile_photo_url:ph.data?.signedUrl??null}
+   setIndividualCustomers(current=>[...current.filter(x=>x.id!==row.id),display].sort((a,b)=>a.full_name.localeCompare(b.full_name)))
+   setSelectedIndividualCustomer(display);setCustomerSection('individuals');setOpenedCompany(null);setEmployeeFormOpen(false);setEmployeesSectionOpen(false)
+  }catch(err){setEmployeeError(err instanceof Error?err.message:(isEnglish?'Could not create customer profile':'تعذر إنشاء ملف العميل'))}
+  finally{setCustomerProfileBusy(false)}
+ }
+
  const filteredCompanies=companies.filter(company=>[company.name,company.company_number,company.location].some(value=>value.toLocaleLowerCase().includes(companySearch.trim().toLocaleLowerCase())))
 
  if(selected?.id==='customers')return <section className="panel" style={{minHeight:360,padding:32}}>
