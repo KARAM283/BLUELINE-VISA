@@ -504,8 +504,8 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
      <div style={{width:112,height:112,borderRadius:18,background:'#fff',border:'1px solid var(--border)',display:'grid',placeItems:'center',padding:12,flexShrink:0}}>
       {openedCompany.logo_url?<img src={openedCompany.logo_url} alt={'شعار '+openedCompany.name} style={{width:'100%',height:'100%',objectFit:'contain'}}/>:<Building2 size={48} color="var(--muted)"/>}
      </div>
-     <div style={{flex:1,minWidth:220}}><span className="eyebrow">COMPANY PROFILE</span><h2 style={{fontSize:26,margin:'8px 0'}}>{openedCompany.name}</h2><p style={{color:'var(--muted)',margin:0}}>رقم الشركة: {openedCompany.company_number} · {openedCompany.location}</p></div>
-     <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(openedCompany)}><Settings2 size={16}/> تعديل بيانات الشركة</button>
+     <div style={{flex:1,minWidth:220}}><span className="eyebrow">{isEnglish?'COMPANY PROFILE':'ملف الشركة'}</span><h2 style={{fontSize:26,margin:'8px 0'}}>{openedCompany.name}</h2><p style={{color:'var(--muted)',margin:0}}>{isEnglish?'Company number: ':'رقم الشركة: '}{openedCompany.company_number} · {openedCompany.location}</p></div>
+     <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(openedCompany)}><Settings2 size={16}/> {isEnglish?'Edit company details':'تعديل بيانات الشركة'}</button>
     </div>
     <button type="button" className="employee-section-card" onClick={()=>setEmployeesSectionOpen(true)}>
      <div className="employee-section-icon"><Users size={28}/></div><div className="employee-section-copy"><span className="eyebrow">{isEnglish?'COMPANY DIRECTORY':'دليل الشركة'}</span><h3>{isEnglish?'Employees':'الموظفون'}</h3><p>{isEnglish?'Manage employee profiles, contact details and passport documents.':'إدارة الملفات الشخصية للموظفين وبيانات التواصل ووثائق جوازات السفر.'}</p></div><div className="employee-section-count">{employees.length}</div><span className="employee-section-open">{isEnglish?'Open section':'فتح القسم'} <ArrowLeft size={16}/></span>
@@ -561,7 +561,7 @@ function TravelOperationsWorkspace({isEnglish}:{isEnglish:boolean}){
         <div className="company-directory-meta"><MapPin size={14}/>{company.location}</div>
         <div className="company-directory-actions">
          <button type="button" className="secondary-btn" onClick={()=>startCompanyForm(company)}><Settings2 size={15}/> تعديل البيانات</button>
-         <button type="button" className="primary-btn" onClick={()=>{setOpenedCompany(company);setEmployeeError('')}}>فتح الشركة <ArrowLeft size={15}/></button>
+         <button type="button" className="primary-btn" onClick={()=>{setOpenedCompany(company);setEmployeesSectionOpen(false);setEmployeeError('')}}>فتح الشركة <ArrowLeft size={15}/></button>
         </div>
        </article>)}
       </div>:<div className="empty-state" style={{marginTop:20,padding:28}}><Building2 size={28}/><b>{companySearch?'لا توجد نتائج مطابقة':'لا توجد شركات مسجلة بعد'}</b><span>{companySearch?'جرّب البحث باسم أو رقم أو موقع مختلف.':'اضغط على إضافة شركة حتى تسجل أول شركة في الدليل.'}</span></div>}
