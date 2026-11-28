@@ -82,6 +82,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  let secretToRedact = "";
   try {
     if (action === "config") {
       const saved = await getSaved();
@@ -91,6 +92,7 @@ Deno.serve(async (req: Request) => {
       const supplied = String(body.apiToken || "").trim();
       const saved = supplied ? null : await getSaved();
       const apiToken = supplied || saved?.api_token || "";
+      secretToRedact = apiToken;
       if (!apiToken) return reply(400, { error: "أدخل Pipedrive API Token أولاً." });
       const account = await testToken(apiToken);
       if (action === "test") return reply(200, { success: true, account });
@@ -100,6 +102,7 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "sync") {
       const saved = await getSaved();
+      secretToRedact = saved?.api_token || "";
       if (!saved?.api_token || !saved.is_connected) return reply(400, { error: "اربط حساب Pipedrive أولاً من الإعدادات." });
       const [organizations, persons] = await Promise.all([fetchCollection("organizations", saved.api_token), fetchCollection("persons", saved.api_token)]);
       const syncedAt = new Date().toISOString();
@@ -127,6 +130,12 @@ Deno.serve(async (req: Request) => {
     }
     return reply(400, { error: "إجراء غير معروف." });
   } catch (error) {
-    return reply(400, { error: error instanceof Error ? error.message : "حدث خطأ أثناء الاتصال بـ Pipedrive." });
+    // Never return credentials or credential-bearing URLs in API error responses.
+    const rawMessage = error instanceof Error ? error.message : "حدث خطأ أثناء الاتصال بـ Pipedrive.";
+    const safeMessage = rawMessage
+      .replace(/api_token=[^&\\s]*/gi, "api_token=[REDACTED]")
+      .replace(/access_token=[^&\\s]*/gi, "access_token=[REDACTED]")
+      .replace(/key=[^&\\s]*/gi, "key=[REDACTED]");
+    return reply(400, { error: secretToRedact ? safeMessage.split(secretToRedact).join("[REDACTED]") : safeMessage });
   }
 });
