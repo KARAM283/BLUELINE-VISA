@@ -1012,3 +1012,56 @@ body:has(.modal-backdrop){
 .dark-mode .setup-card p,.dark-mode .setup-card small{color:#9aabc0}
 .dark-mode .empty-state,.dark-mode .pipeline-empty,.dark-mode .flightdesk-empty{color:#8295ad}
 .dark-mode .scrim{background:#050a12c9}
+
+
+/* Functional dark theme: overrides every light-surface layer */
+:root:has(.app-shell.dark-mode),:root:has(.auth-page.dark-mode){color-scheme:dark;background:#0b1220}
+body:has(.app-shell.dark-mode),body:has(.auth-page.dark-mode),#root:has(.app-shell.dark-mode),#root:has(.auth-page.dark-mode){background:#0b1220!important;color:#e5edf7!important}
+.app-shell.dark-mode,.auth-page.dark-mode{--clay:#151f2e;--clay-ink:#e5edf7;--clay-muted:#9aabc0;--edge:#2b3a50;--shadow-light:#ffffff08;--shadow-dark:#050b14;background:#0b1220!important;color:#e5edf7!important;color-scheme:dark}
+.app-shell.dark-mode .main-area,.app-shell.dark-mode .page-content{background:transparent!important;color:#e5edf7!important}
+.app-shell.dark-mode .sidebar{background:linear-gradient(160deg,#172438,#101a2a)!important;border-color:#2b3a50!important;box-shadow:8px 0 28px #0005!important}
+.app-shell.dark-mode .brand,.app-shell.dark-mode .brand b,.app-shell.dark-mode .workspace b,.app-shell.dark-mode .profile-chip b{color:#e5edf7!important}
+.app-shell.dark-mode .brand small,.app-shell.dark-mode .workspace small,.app-shell.dark-mode .profile-chip small,.app-shell.dark-mode .version{color:#91a3bb!important}
+.app-shell.dark-mode .workspace{background:#111d2d!important;border-color:#2b3a50!important;box-shadow:inset 3px 3px 7px #080e18,inset -3px -3px 7px #ffffff08!important}
+.app-shell.dark-mode .nav-item{color:#aebed2!important}
+.app-shell.dark-mode .nav-item:hover,.app-shell.dark-mode .nav-item.active{background:#203149!important;color:#f1f6fc!important}
+.app-shell.dark-mode .nav-item.active{box-shadow:inset 2px 2px 5px #0a1220,inset -2px -2px 5px #ffffff08!important}
+.app-shell.dark-mode .nav-item svg{color:#9aabc0!important}
+.app-shell.dark-mode .topbar{background:#111c2cE8!important;border-color:#2b3a50!important;box-shadow:0 5px 18px #0003!important}
+.app-shell.dark-mode .breadcrumb,.app-shell.dark-mode .today{color:#aebed2!important}
+.app-shell.dark-mode .page-heading h1,.app-shell.dark-mode .panel-head h2,.app-shell.dark-mode .pipelines-heading h2{color:#edf3fb!important}
+.app-shell.dark-mode .page-heading p,.app-shell.dark-mode .panel-head p,.app-shell.dark-mode .metric-card>span,.app-shell.dark-mode .metric-card small{color:#9aabc0!important}
+.app-shell.dark-mode .metric-card,.app-shell.dark-mode .panel{background:#151f2e!important;border:1px solid #2b3a50!important;color:#e5edf7!important;box-shadow:5px 5px 14px #080e18,-3px -3px 10px #ffffff05!important}
+.app-shell.dark-mode .metric-card strong,.app-shell.dark-mode .panel-head h2,.app-shell.dark-mode td b,.app-shell.dark-mode .pipeline-summary-row b{color:#e5edf7!important}
+.app-shell.dark-mode th{background:#1c2a3e!important;color:#aebed2!important}
+.app-shell.dark-mode td{background:transparent!important;color:#c0ccda!important;border-color:#2b3a50!important}
+.app-shell.dark-mode .pipeline-summary-row{color:#bdc9d8!important;border-color:#2b3a50!important}
+.app-shell.dark-mode .pipeline-summary-note,.app-shell.dark-mode .kanban-column,.app-shell.dark-mode .pipeline-column,.app-shell.dark-mode .flightdesk-column{background:#111d2d!important;border-color:#2b3a50!important;color:#bdc9d8!important}
+.app-shell.dark-mode .kanban-column-head,.app-shell.dark-mode .pipeline-column-head,.app-shell.dark-mode .flightdesk-column-head{border-color:#2b3a50!important;color:#dce6f2!important}
+.app-shell.dark-mode .kanban-card,.app-shell.dark-mode .pipeline-case-card,.app-shell.dark-mode .flightdesk-ticket,.app-shell.dark-mode .requirement-card{background:#1a293d!important;border:1px solid #30435b!important;color:#e5edf7!important;box-shadow:0 5px 14px #0003!important}
+.app-shell.dark-mode .kanban-customer,.app-shell.dark-mode .pipeline-case-card>b,.app-shell.dark-mode .flightdesk-passenger,.app-shell.dark-mode .requirement-info b{color:#edf3fb!important}
+.app-shell.dark-mode .kanban-phone,.app-shell.dark-mode .pipeline-case-card>small,.app-shell.dark-mode .requirement-info small,.app-shell.dark-mode .flightdesk-ticket-meta{color:#9aabc0!important}
+.app-shell.dark-mode .kanban-card-foot,.app-shell.dark-mode .pipeline-case-meta,.app-shell.dark-mode .flightdesk-ticket-foot{border-color:#30435b!important}
+.app-shell.dark-mode .pipeline-count,.app-shell.dark-mode .kanban-count{background:#263b52!important;color:#b9cce0!important}
+.app-shell.dark-mode .search-box,.app-shell.dark-mode .view-switch,.app-shell.dark-mode .document-case-summary,.app-shell.dark-mode .flightdesk-detail-grid>div,.app-shell.dark-mode .flightdesk-segment{background:#111d2d!important;border-color:#30435b!important;color:#bdc9d8!important}
+.app-shell.dark-mode input,.app-shell.dark-mode select,.app-shell.dark-mode textarea,.app-shell.dark-mode .search-box input,.app-shell.dark-mode .flightdesk-search{background:#101b2a!important;border-color:#34475f!important;color:#e5edf7!important}
+.app-shell.dark-mode input::placeholder,.app-shell.dark-mode textarea::placeholder{color:#8496ad!important}
+.app-shell.dark-mode .modal-backdrop{background:#020711c9!important;backdrop-filter:blur(9px)}
+.app-shell.dark-mode .modal-card,.app-shell.dark-mode .flightdesk-modal{background:#151f2e!important;border:1px solid #34475f!important;color:#e5edf7!important;box-shadow:0 25px 80px #0009!important}
+.app-shell.dark-mode .modal-head h2,.app-shell.dark-mode .modal-card b,.app-shell.dark-mode .flightdesk-detail-grid b,.app-shell.dark-mode .flightdesk-detail-section>b{color:#edf3fb!important}
+.app-shell.dark-mode .modal-head p,.app-shell.dark-mode .modal-card label,.app-shell.dark-mode .flightdesk-form-grid label,.app-shell.dark-mode .flightdesk-detail-grid small,.app-shell.dark-mode .flightdesk-detail-section p{color:#aebed2!important}
+.app-shell.dark-mode .flightdesk-modal .modal-head{background:#151f2e!important;border-color:#30435b!important}
+.app-shell.dark-mode .flightdesk-route,.app-shell.dark-mode .flightdesk-dropzone{background:#1b2c42!important;border-color:#3b506b!important;color:#d3dfed!important}
+.app-shell.dark-mode .secondary-btn,.app-shell.dark-mode .icon-btn,.app-shell.dark-mode .language-toggle,.app-shell.dark-mode .theme-toggle,.app-shell.dark-mode .document-download{background:#1b2a3e!important;border:1px solid #34475f!important;color:#dce6f2!important;box-shadow:none!important}
+.app-shell.dark-mode .empty-state,.app-shell.dark-mode .empty-state b,.app-shell.dark-mode .page-footer,.app-shell.dark-mode .document-footnote{color:#91a3bb!important}
+.app-shell.dark-mode .case-details-grid>div,.app-shell.dark-mode .document-case-summary,.app-shell.dark-mode .case-attachment-item{background:#111d2d!important;border-color:#30435b!important;color:#dce6f2!important}
+.app-shell.dark-mode .case-details-grid b,.app-shell.dark-mode .case-attachments-head b,.app-shell.dark-mode .document-case-summary b{color:#edf3fb!important}
+.app-shell.dark-mode .scrim{background:#020711c9!important}
+.auth-page.dark-mode{background:#0b1220!important;color:#e5edf7!important}
+.auth-page.dark-mode .auth-card{background:#111c2c!important;color:#e5edf7!important}
+.auth-page.dark-mode .auth-card .brand,.auth-page.dark-mode .auth-copy h1{color:#edf3fb!important}
+.auth-page.dark-mode .auth-copy p,.auth-page.dark-mode .auth-form label,.auth-page.dark-mode .auth-foot{color:#aebed2!important}
+.auth-page.dark-mode .auth-form input{background:#172438!important;border-color:#34475f!important;color:#edf3fb!important}
+.auth-page.dark-mode .auth-aside{background:linear-gradient(145deg,#172438,#0b1220)!important}
+.auth-page.dark-mode .theme-toggle{background:#1b2a3e!important;border-color:#34475f!important;color:#f2c879!important}
+.theme-toggle{flex:none;width:38px;height:38px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;color:#334155;display:grid;place-items:center;cursor:pointer}
