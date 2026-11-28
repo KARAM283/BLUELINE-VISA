@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       const email = String(body.email || "").trim().toLowerCase();
       const password = String(body.password || "");
       const role = String(body.role || "employee");
-      if (!fullName || !email || password.length < 8 || !["employee", "manager", "admin"].includes(role)) return reply({ error: "أدخل الاسم والإيميل وكلمة مرور من 8 أحرف على الأقل وصلاحية صحيحة." }, 400);
+      if (!fullName || !email || password.length < 8 || !["employee", "visa_creator", "manager", "admin"].includes(role)) return reply({ error: "أدخل الاسم والإيميل وكلمة مرور من 8 أحرف على الأقل وصلاحية صحيحة." }, 400);
       const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: fullName } });
       if (error) throw error;
       const userId = data.user.id;
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
       }
       if (typeof body.role === "string") {
-        if (!["employee", "manager", "admin"].includes(body.role)) return reply({ error: "Invalid role" }, 400);
+        if (!["employee", "visa_creator", "manager", "admin"].includes(body.role)) return reply({ error: "Invalid role" }, 400);
         const { count, error: countError } = await admin.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "admin");
         if (countError) throw countError;
         const { data: currentRoles, error: currentError } = await admin.from("user_roles").select("role").eq("user_id", userId);
