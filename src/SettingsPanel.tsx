@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { CSSProperties } from 'react'
-import { Bot, RefreshCw, ShieldCheck, Zap } from 'lucide-react'
+import { Bot, RefreshCw, ShieldCheck, Zap, Link2, Unplug } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
 type Country = { id: string; name: string; iso2: string | null }
@@ -79,6 +79,110 @@ export default function SettingsPanel() {
       <div style={{ fontSize: 11, color: '#647187' }}>{pipelines.length ? pipelines.map(x => x.name).join(' · ') : 'لا توجد Pipelines'}</div>
     </section>
   </div>
+}
+
+
+function PipedriveSettings() {
+  const [apiToken, setApiToken] = useState('')
+  const [configured, setConfigured] = useState(false)
+  const [connected, setConnected] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [companyDomain, setCompanyDomain] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  async function invoke(action: string, token?: string) {
+    if (!supabase) throw new Error('Supabase غير متصل')
+    const { data, error } = await supabase.functions.invoke('pipedrive-integration', {
+      body: { action, ...(token ? { apiToken: token } : {}) }
+    })
+    if (error) {
+      let detail = error.message || 'فشل الاتصال بالخدمة'
+      const context = (error as { context?: unknown }).context
+      if (context instanceof Response) {
+        try { const result = await context.clone().json(); if (result?.error) detail = String(result.error) } catch {}
+      }
+      throw new Error(detail)
+    }
+    if (data?.error) throw new Error(data.error)
+    return data
+  }
+
+  async function load() {
+    try {
+      const data = await invoke('config')
+      setConfigured(!!data.configured)
+      setConnected(!!data.connected)
+      setCompanyName(data.companyName || '')
+      setCompanyDomain(data.companyDomain || '')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر تحميل إعدادات Pipedrive')
+    } finally { setLoading(false) }
+  }
+  useEffect(() => { void load() }, [])
+
+  async function test() {
+    setBusy(true); setError(''); setMessage('')
+    try {
+      const data = await invoke('test', apiToken.trim() || undefined)
+      setMessage('نجح الاتصال بحساب Pipedrive: ' + (data.account?.company || data.account?.name || 'تم التحقق'))
+    } catch (e) { setError(e instanceof Error ? e.message : 'فشل اختبار الاتصال') }
+    finally { setBusy(false) }
+  }
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true); setError(''); setMessage('')
+    try {
+      const data = await invoke('save', apiToken.trim() || undefined)
+      setConfigured(true); setConnected(true); setApiToken('')
+      setCompanyName(data.account?.company || data.account?.name || 'Pipedrive')
+      setCompanyDomain(data.account?.domain || '')
+      setMessage('تم حفظ الربط بنجاح والتحقق من حساب Pipedrive.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'تعذر حفظ الربط') }
+    finally { setBusy(false) }
+  }
+  async function disconnect() {
+    if (!window.confirm('هل تريد فصل حساب Pipedrive وحذف مفتاح الربط المحفوظ؟')) return
+    setBusy(true); setError(''); setMessage('')
+    try {
+      await invoke('disconnect')
+      setConfigured(false); setConnected(false); setCompanyName(''); setCompanyDomain(''); setApiToken('')
+      setMessage('تم فصل حساب Pipedrive.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'تعذر فصل الحساب') }
+    finally { setBusy(false) }
+  }
+
+  const card: CSSProperties = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 18, marginBottom: 16 }
+  const field: CSSProperties = { width: '100%', border: '1px solid #dbe2ec', borderRadius: 9, padding: '11px 12px', background: '#fbfcfe', color: '#24334a', font: 'inherit', fontSize: 12, minWidth: 0 }
+  const btn: CSSProperties = { border: 0, borderRadius: 9, padding: '10px 14px', background: '#172943', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }
+  return <section style={card}>
+    <div style={{display:'flex',alignItems:'center',gap:11,marginBottom:8}}>
+      <div style={{width:40,height:40,borderRadius:11,background:'#e8f1ff',color:'#2864b4',display:'grid',placeItems:'center'}}><Link2 size={21}/></div>
+      <div style={{flex:1}}><h2 style={{margin:0,fontSize:15,color:'#1e2b40'}}>Pipedrive CRM · ربط النظام</h2><p style={{margin:'4px 0 0',fontSize:11,color:'#7b8798'}}>اربط Blue Line Visa بحساب Pipedrive الخاص بالشركة</p></div>
+      <span style={{fontSize:10,padding:'5px 9px',borderRadius:20,background:connected?'#eaf8f0':'#fff4e8',color:connected?'#21865e':'#b7791f'}}>{loading?'جارٍ الفحص...':connected?'متصل':'غير مربوط'}</span>
+    </div>
+    {loading ? <p style={{fontSize:11,color:'#778399'}}>جارٍ تحميل إعدادات الربط...</p> : <>
+      {connected && <div style={{padding:12,borderRadius:9,background:'#f3f7fc',marginTop:13,marginBottom:13,fontSize:11,color:'#42536b'}}>
+        <strong>{companyName || 'Pipedrive'}</strong>{companyDomain ? <span> · {companyDomain}</span> : null}
+        <p style={{margin:'5px 0 0',color:'#718096'}}>تم التحقق من الحساب وحفظ مفتاح API بأمان على السيرفر.</p>
+      </div>}
+      <form onSubmit={save} style={{display:'grid',gap:12,marginTop:14}}>
+        <label style={{display:'grid',gap:6,fontSize:11,color:'#526176'}}>Pipedrive API Token
+          <input style={field} type="password" value={apiToken} onChange={e=>setApiToken(e.target.value)} placeholder={configured?'مفتاح محفوظ — اتركه فارغاً أو أدخل مفتاحاً جديداً':'ألصق API Token الخاص بحساب Pipedrive'} autoComplete="new-password"/>
+        </label>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button type="button" style={{...btn,background:'#eef2f8',color:'#34445d'}} disabled={busy||(!apiToken.trim()&&!configured)} onClick={()=>void test()}><ShieldCheck size={14}/>{busy?'جارٍ الفحص...':'اختبار الاتصال'}</button>
+          <button style={btn} disabled={busy||(!apiToken.trim()&&!configured)}><Link2 size={14}/>{busy?'جارٍ الحفظ...':'حفظ وربط الحساب'}</button>
+          {configured && <button type="button" style={{...btn,background:'#fff1f0',color:'#b42318'}} disabled={busy} onClick={()=>void disconnect()}><Unplug size={14}/>فصل الحساب</button>}
+        </div>
+        <span style={{fontSize:10,color:'#8793a5',display:'inline-flex',alignItems:'center',gap:5}}><ShieldCheck size={13}/> مفتاح Pipedrive لا يُرسل إلى المتصفح ولا يُتاح للموظفين.</span>
+      </form>
+    </>}
+    {message&&<div style={{marginTop:12,padding:10,borderRadius:8,background:'#effaf4',color:'#21865e',fontSize:11}}>{message}</div>}
+    {error&&<div style={{marginTop:12,padding:10,borderRadius:8,background:'#fff1f0',color:'#b42318',fontSize:11}}>{error}</div>}
+  </section>
 }
 
 function GeminiAISettings() {
