@@ -140,7 +140,8 @@ function PipedriveSettings() {
       setConfigured(true); setConnected(true); setApiToken('')
       setCompanyName(data.account?.company || data.account?.name || 'Pipedrive')
       setCompanyDomain(data.account?.domain || '')
-      setMessage('تم حفظ الربط بنجاح والتحقق من حساب Pipedrive.')
+      const imported = await invoke('sync')
+      setMessage('تم ربط الحساب واستيراد ' + imported.peopleCount + ' شخص و' + imported.organizationCount + ' شركة من Pipedrive.')
     } catch (e) { setError(e instanceof Error ? e.message : 'تعذر حفظ الربط') }
     finally { setBusy(false) }
   }
