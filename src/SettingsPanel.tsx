@@ -49,6 +49,7 @@ export default function SettingsPanel() {
   const heading: CSSProperties = { margin: '0 0 12px', fontSize: 14, color: '#1e2b40' }
 
   return <div>
+    <PipedriveSettings />
     <GeminiAISettings />
     {notice && <div style={{ ...card, color: '#21865e', background: '#effaf4', fontSize: 11 }}>{notice}</div>}
     {error && <div className="error-banner">{error}</div>}
