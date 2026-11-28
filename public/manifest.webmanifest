@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Blue Line Visa",
+  "short_name": "Blue Line",
+  "description": "Blue Line Travel — Visa Operations",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0B1F3A",
+  "theme_color": "#0B1F3A",
+  "icons": [
+    { "src": "/blue-line-app.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
