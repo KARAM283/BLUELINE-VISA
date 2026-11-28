@@ -41,6 +41,7 @@ function appConfirm(message:string):Promise<boolean>{
 export default function App() {
   const { language, toggleLanguage, isEnglish } = useLanguage()
   const [session, setSession] = useState<Session | null>(null)
+  const [authInitializing, setAuthInitializing] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [role, setRole] = useState<AppRole>('employee')
   const [cases, setCases] = useState<VisaCase[]>([])
@@ -63,10 +64,42 @@ export default function App() {
   const themeToggle = <button className="theme-toggle" type="button" onClick={() => setDarkMode(value => !value)} aria-label={darkMode ? (isEnglish ? 'Switch to light mode' : 'التحويل إلى الوضع النهاري') : (isEnglish ? 'Switch to dark mode' : 'التحويل إلى الوضع الليلي')} title={darkMode ? (isEnglish ? 'Light mode' : 'الوضع النهاري') : (isEnglish ? 'Dark mode' : 'الوضع الليلي')}>{darkMode ? <Sun size={17}/> : <Moon size={17}/>}</button>
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
-    return () => listener.subscription.unsubscribe()
+    if (!supabase) { setLoading(false); setAuthInitializing(false); return }
+    let active = true
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (active) setSession(next)
+    })
+    void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
+      if (!active) return
+      if (sessionError) {
+        setError('تعذر التحقق من جلسة الدخول. سجّل الدخول مجدداً.')
+        setSession(null)
+      } else if (data.session) {
+        const { data: verified, error: verifyError } = await supabase!.auth.getUser()
+        if (!active) return
+        if (verifyError || !verified.user) {
+          await supabase!.auth.signOut()
+          if (!active) return
+          setSession(null)
+          setError('انتهت صلاحية جلسة الدخول. سجّل الدخول مجدداً.')
+        } else {
+          setSession(data.session)
+        }
+      } else {
+        setSession(null)
+      }
+      if (active) setAuthInitializing(false)
+    }).catch(() => {
+      if (active) {
+        setSession(null)
+        setError('تعذر التحقق من جلسة الدخول. سجّل الدخول مجدداً.')
+        setAuthInitializing(false)
+      }
+    })
+    return () => {
+      active = false
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -81,8 +114,16 @@ export default function App() {
       ])
       if (!active) return
       if (pe || re || ce) setError([pe?.message, re?.message, ce?.message].filter(Boolean).join(' · '))
-      if (p && !p.is_active) { await supabase!.auth.signOut(); setError('تم إيقاف هذا الحساب. راجع مدير النظام.'); setLoading(false); return }
-      setProfile(p as Profile | null)
+      if (pe || !p || !p.is_active) {
+        await supabase!.auth.signOut()
+        if (!active) return
+        setProfile(null)
+        setCases([])
+        setError(pe ? 'تعذر التحقق من صلاحية الحساب.' : p ? 'تم إيقاف هذا الحساب. راجع مدير النظام.' : 'هذا الحساب غير مهيأ داخل النظام. راجع مدير النظام.')
+        setLoading(false)
+        return
+      }
+      setProfile(p as Profile)
       const found = (roles ?? []).map(x => x.role as AppRole)
       const resolvedRole: AppRole = found.includes('admin') ? 'admin' : found.includes('manager') ? 'manager' : found.includes('visa_creator') ? 'visa_creator' : 'employee'
       setRole(resolvedRole)
@@ -157,13 +198,19 @@ export default function App() {
   async function signIn(e: FormEvent) {
     e.preventDefault(); if (!supabase) return
     setAuthBusy(true); setError('')
-    const { error: e1 } = await supabase.auth.signInWithPassword({ email, password })
-    if (e1) setError(e1.message)
-    setAuthBusy(false)
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (signInError) setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.')
+    } catch {
+      setError('تعذر تسجيل الدخول حالياً. تحقق من الاتصال وحاول مجدداً.')
+    } finally {
+      setAuthBusy(false)
+    }
   }
   async function signOut() { await supabase?.auth.signOut() }
 
   if (!isSupabaseConfigured) return <SetupScreen />
+  if (authInitializing) return <main className={`auth-page${darkMode ? " dark-mode" : ""}`}><div className="auth-card"><div className="loading-card">جارٍ التحقق من جلسة الدخول...</div></div></main>
   if (!session) return <main className={`auth-page${darkMode ? " dark-mode" : ""}`} lang={language} dir={isEnglish ? 'ltr' : 'rtl'}><div className="auth-card"><div className="auth-language">{themeToggle}<InstallAppButton isEnglish={isEnglish}/><button className="language-toggle" onClick={toggleLanguage} type="button">{isEnglish ? 'العربية' : 'English'}</button></div><div className="auth-copy"><span className="eyebrow">BLUE LINE TRAVEL</span><h1>إدارة معاملات الفيزا،<br/><em>بصورة أوضح.</em></h1><p>منصة داخلية لمتابعة معاملات التأشيرات والوثائق والمراحل التشغيلية.</p></div><form onSubmit={signIn} className="auth-form"><label>البريد الإلكتروني<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="name@blueline-iq.com" /></label><label>كلمة المرور<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required placeholder="••••••••" /></label>{error && <div className="error-line">{error}</div>}<button className="primary-btn" disabled={authBusy}>{authBusy?'جارٍ تسجيل الدخول...':'تسجيل الدخول'}<ArrowLeft size={18}/></button></form><div className="auth-foot"><ShieldCheck size={15}/> دخول مخصص لموظفي Blue Line Travel</div></div><div className="auth-aside" onPointerMove={e=>{const r=e.currentTarget.getBoundingClientRect();e.currentTarget.style.setProperty("--mx",`${((e.clientX-r.left)/r.width-.5)*22}px`);e.currentTarget.style.setProperty("--my",`${((e.clientY-r.top)/r.height-.5)*22}px`)}} onPointerLeave={e=>{e.currentTarget.style.setProperty("--mx","0px");e.currentTarget.style.setProperty("--my","0px")}}><div className="orb orb-one"/><div className="orb orb-two"/><div className="travel-scene" aria-hidden="true"><div className="travel-grid"/><div className="travel-moon"/><div className="travel-route"><svg viewBox="0 0 700 420" preserveAspectRatio="none"><path d="M40 330 C145 255 180 365 285 260 S430 100 545 170 S610 80 665 45"/></svg><span className="route-dot route-dot-one"/><span className="route-dot route-dot-two"/></div><div className="neon-plane"><Plane size={62} strokeWidth={1.35}/></div><div className="neon-palm palm-one"><Trees size={100} strokeWidth={1.1}/></div><div className="neon-palm palm-two"><Trees size={72} strokeWidth={1.1}/></div><div className="neon-luggage"><Luggage size={39} strokeWidth={1.3}/></div><div className="neon-compass"><Compass size={35} strokeWidth={1.25}/></div><div className="neon-pin"><MapPin size={25}/></div><div className="neon-globe"><Globe2 size={30}/></div><div className="travel-horizon"/></div><div className={`aside-content ${isEnglish ? "aside-content-en" : "aside-content-ar"}`} lang={isEnglish ? "en" : "ar"} dir={isEnglish ? "ltr" : "rtl"}><span>{isEnglish ? "VISA OPERATIONS / 01" : "عمليات التأشيرات / 01"}</span><h2>{isEnglish ? <>Every journey<br/><em>starts with a clear path.</em></> : <>كل رحلة<br/><em>تبدأ بمسار واضح.</em></>}</h2><p>{isEnglish ? "Seamless visa operations, from the first conversation to the final decision." : "إدارة متكاملة لمعاملات التأشيرات، من أول تواصل إلى القرار النهائي."}</p><div className="aside-stats"><div><b>01</b><small>{isEnglish ? "One file per application" : "ملف مستقل لكل معاملة"}</small></div><div><b>02</b><small>{isEnglish ? "Track every stage" : "تابع كل مرحلة بسهولة"}</small></div><div><b>03</b><small>{isEnglish ? "Role-based access" : "صلاحيات حسب دور الموظف"}</small></div></div></div></div></main>
 
   return <div className={`app-shell${darkMode ? " dark-mode" : ""}`} lang={language} dir={isEnglish ? 'ltr' : 'rtl'}>
