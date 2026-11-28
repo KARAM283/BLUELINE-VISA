@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, Download, RefreshCw, Search, Users, Phone, Mail, MapPin, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Building2, RefreshCw, Search, Users, Phone, MapPin, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
 type Person = { external_id: string; name: string; first_name: string | null; last_name: string | null; phone: string | null; email: string | null; organization_name: string | null; synced_at: string }
