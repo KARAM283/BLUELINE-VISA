@@ -1,4 +1,4 @@
-export type AppRole = 'employee' | 'manager' | 'admin'
+export type AppRole = 'employee' | 'visa_creator' | 'manager' | 'admin'
 export type VisaCase = {
   id: string; case_number: string | null; customer_full_name: string; customer_phone: string | null; date_of_birth: string | null; expire_date: string | null;
   country_id: string; visa_type_id: string; pipeline_id: string;
