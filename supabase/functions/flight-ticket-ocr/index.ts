@@ -11,6 +11,10 @@ Deno.serve(async(req:Request)=>{
  const user=createClient(url,anon,{global:{headers:{Authorization:"Bearer "+token}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:{user:authUser},error:authErr}=await user.auth.getUser(token);
  if(authErr||!authUser)return reply(401,{error:"جلسة الدخول غير صالحة."});
+ const {data:activeProfile,error:activeProfileError}=await user.from("profiles").select("is_active").eq("id",authUser.id).maybeSingle();
+ if(activeProfileError||!activeProfile?.is_active)return reply(403,{error:"حسابك غير مفعل. تواصل مع المدير."});
+ const {data:activeProfile,error:activeProfileError}=await user.from("profiles").select("is_active").eq("id",authUser.id).maybeSingle();
+ if(activeProfileError||!activeProfile?.is_active)return reply(403,{error:"حسابك غير مفعل. تواصل مع المدير."});
  let body:any={};try{body=await req.json()}catch{return reply(400,{error:"طلب غير صالح."})}
  const mimeType=String(body.mimeType||""),base64=String(body.base64||"").replace(/^data:[^,]+,/,"").replace(/\s/g,"");
  if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mimeType))return reply(415,{error:"الصيغ المدعومة: PDF وJPG وPNG وWEBP."});
