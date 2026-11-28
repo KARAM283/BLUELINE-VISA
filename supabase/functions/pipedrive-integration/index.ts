@@ -52,6 +52,13 @@ Deno.serve(async (req: Request) => {
     if (value && typeof value === "object" && "value" in value) return String((value as any).value || "") || null;
     return value === null || value === undefined || value === "" ? null : String(value);
   }
+  function allValues(value: unknown): string | null {
+    if (Array.isArray(value)) {
+      const values = value.map((x: any) => x?.value).filter((x: unknown) => x !== null && x !== undefined && String(x).trim() !== "").map(String);
+      return values.length ? [...new Set(values)].join(" / ") : null;
+    }
+    return firstValue(value);
+  }
   async function fetchCollection(kind: "persons" | "organizations", apiToken: string) {
     const records: any[] = [];
     let start = 0;
@@ -97,7 +104,7 @@ Deno.serve(async (req: Request) => {
       const [organizations, persons] = await Promise.all([fetchCollection("organizations", saved.api_token), fetchCollection("persons", saved.api_token)]);
       const syncedAt = new Date().toISOString();
       const organizationRows = organizations.filter(x => x?.id !== undefined && x?.name).map(x => ({
-        external_id: String(x.id), name: String(x.name), phone: firstValue(x.phone) || firstValue(x.phone_numbers),
+        external_id: String(x.id), name: String(x.name), phone: allValues(x.phone) || allValues(x.phone_numbers),
         address: firstValue(x.address) || firstValue(x.address_formatted_address), website: firstValue(x.website),
         raw_data: x, synced_at: syncedAt
       }));
@@ -105,7 +112,7 @@ Deno.serve(async (req: Request) => {
       const peopleRows = persons.filter(x => x?.id !== undefined).map(x => {
         const orgId = x.org_id?.value ?? x.org_id?.id ?? null;
         const name = String(x.name || [x.first_name, x.last_name].filter(Boolean).join(" ") || "Unnamed");
-        return { external_id: String(x.id), name, first_name: x.first_name || null, last_name: x.last_name || null, phone: firstValue(x.phone), email: firstValue(x.email), organization_external_id: orgId === null ? null : String(orgId), organization_name: x.org_id?.name || (orgId === null ? null : organizationNames.get(String(orgId)) || null), raw_data: x, synced_at: syncedAt };
+        return { external_id: String(x.id), name, first_name: x.first_name || null, last_name: x.last_name || null, phone: allValues(x.phone), email: allValues(x.email), organization_external_id: orgId === null ? null : String(orgId), organization_name: x.org_id?.name || (orgId === null ? null : organizationNames.get(String(orgId)) || null), raw_data: x, synced_at: syncedAt };
       });
       await upsertChunks("pipedrive_organizations", organizationRows);
       await upsertChunks("pipedrive_people", peopleRows);
