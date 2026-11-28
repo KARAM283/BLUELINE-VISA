@@ -6,7 +6,7 @@ import type { AppRole } from './types'
 import type { CSSProperties, FormEvent } from 'react'
 
 type EmployeeUser = { id:string; email:string; full_name:string; is_active:boolean; roles:string[]; created_at:string }
-const roleLabel:Record<string,string>={admin:'مدير النظام',manager:'مدير',employee:'موظف'}
+const roleLabel:Record<string,string>={admin:'مدير النظام',manager:'مدير',visa_creator:'منشئ معاملات Visa',employee:'موظف'}
 export default function EmployeesPanel({currentUserId}:{currentUserId:string}) {
   const [users,setUsers]=useState<EmployeeUser[]>([])
   const [search,setSearch]=useState('')
@@ -50,7 +50,7 @@ export default function EmployeesPanel({currentUserId}:{currentUserId:string}) {
       <input style={field} placeholder="الاسم الكامل" value={name} onChange={e=>setName(e.target.value)} required/>
       <input style={field} type="email" placeholder="البريد الإلكتروني" value={email} onChange={e=>setEmail(e.target.value)} required/>
       <input style={field} type="password" placeholder="كلمة المرور (8 أحرف على الأقل)" value={password} onChange={e=>setPassword(e.target.value)} minLength={8} required autoComplete="new-password"/>
-      <select style={field} value={role} onChange={e=>setRole(e.target.value as AppRole)}><option value="employee">موظف</option><option value="manager">مدير</option><option value="admin">مدير النظام</option></select>
+      <select style={field} value={role} onChange={e=>setRole(e.target.value as AppRole)}><option value="employee">موظف</option><option value="visa_creator">منشئ معاملات Visa</option><option value="manager">مدير</option><option value="admin">مدير النظام</option></select>
       <div style={{display:'flex',gap:8,alignItems:'center'}}><button style={button} disabled={busy}>إنشاء الحساب</button><button type="button" style={{...button,background:'#eef2f8',color:'#34445d'}} onClick={()=>setShowCreate(false)}>إلغاء</button></div>
     </form><p style={{fontSize:10,color:'#778399',margin:'12px 0 0'}}>الحساب يُنشأ مفعّلاً، ويمكن للموظف تسجيل الدخول مباشرة باستخدام الإيميل وكلمة المرور المحددين.</p></section>}
     <section style={card}>
